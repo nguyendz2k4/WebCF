@@ -1,0 +1,12 @@
+# Dependencies
+**/node_modules/
+
+# Next.js build output & cache
+**/.next/
+**/out/
+
+# Env & IDE
+.env*
+.vscode/
+.idea/
+*.log
