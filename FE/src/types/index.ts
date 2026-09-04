@@ -85,3 +85,5 @@ export interface ToastNotification {
   message: string;
   type?: 'success' | 'info' | 'cart';
 }
+
+export * from './product';

@@ -26,6 +26,13 @@ interface AppContextType {
   cartTotal: number;
   formattedCartTotal: string;
 
+  // Checkout / Buy Now state
+  isCheckoutOpen: boolean;
+  setIsCheckoutOpen: (open: boolean) => void;
+  checkoutItems: CartItem[];
+  openCheckout: (items?: CartItem[] | CartItem) => void;
+  buyNow: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
+
   // Toast state
   toasts: ToastNotification[];
   addToast: (title: string, message: string, type?: 'success' | 'info' | 'cart') => void;
@@ -64,6 +71,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // Checkout state
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [checkoutItems, setCheckoutItems] = useState<CartItem[]>([]);
 
   // Toast state
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
@@ -184,6 +195,43 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCart([]);
   };
 
+  // Checkout / Buy Now methods
+  const openCheckout = (items?: CartItem[] | CartItem) => {
+    if (!user) {
+      setAuthModalMode('login');
+      setIsAuthModalOpen(true);
+      addToast('Yêu cầu đăng nhập', 'Vui lòng đăng nhập tài khoản để tiến hành đặt hàng.', 'info');
+      return;
+    }
+
+    if (items) {
+      const itemList = Array.isArray(items) ? items : [items];
+      setCheckoutItems(itemList);
+    } else {
+      setCheckoutItems(cart);
+    }
+    setIsCartOpen(false);
+    setIsCheckoutOpen(true);
+  };
+
+  const buyNow = (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => {
+    const directItem: CartItem = {
+      ...item,
+      quantity: item.quantity || 1,
+    };
+
+    if (!user) {
+      setAuthModalMode('login');
+      setIsAuthModalOpen(true);
+      addToast('Yêu cầu đăng nhập', 'Vui lòng đăng nhập tài khoản để tiến hành Mua Ngay.', 'info');
+      return;
+    }
+
+    setCheckoutItems([directItem]);
+    setIsCartOpen(false);
+    setIsCheckoutOpen(true);
+  };
+
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartTotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
 
@@ -213,6 +261,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         cartCount,
         cartTotal,
         formattedCartTotal,
+        isCheckoutOpen,
+        setIsCheckoutOpen,
+        checkoutItems,
+        openCheckout,
+        buyNow,
         toasts,
         addToast,
         removeToast,

@@ -1,6 +1,23 @@
 import type { Metadata, Viewport } from 'next';
+import { Cormorant_Garamond, DM_Sans } from 'next/font/google';
 import './globals.css';
 import { AppProvider } from '@/stores/AppContext';
+import { LenisProvider } from '@/components/shared/LenisProvider';
+
+const cormorantGaramond = Cormorant_Garamond({
+  subsets: ['latin', 'vietnamese'],
+  weight: ['300', '400'],
+  style: ['normal', 'italic'],
+  variable: '--font-serif',
+  display: 'swap',
+});
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-sans',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Aura Coffee Solutions | Hệ Sinh Thái Giải Pháp Cà Phê Toàn Diện',
@@ -9,7 +26,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0d0a08',
+  themeColor: '#F5EFE6',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
@@ -21,19 +38,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi" className="scroll-smooth dark">
-      <body className="bg-[#0d0a08] text-[#f5f5f7] antialiased selection:bg-[#c89b3c] selection:text-black min-h-screen relative">
-        {/* Subtle Ambient Grain & Coffee Warmth Overlay */}
-        <div
-          className="fixed inset-0 pointer-events-none -z-10 opacity-[0.025]"
-          style={{
-            backgroundImage: `radial-gradient(#c89b3c 1px, transparent 1px)`,
-            backgroundSize: '24px 24px',
-          }}
-          aria-hidden="true"
-        />
+    <html lang="vi" className={`scroll-smooth ${cormorantGaramond.variable} ${dmSans.variable}`}>
+      <body>
         <AppProvider>
-          {children}
+          <LenisProvider>
+            {children}
+          </LenisProvider>
         </AppProvider>
       </body>
     </html>

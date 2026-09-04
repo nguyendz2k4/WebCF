@@ -2,8 +2,22 @@
 
 import React, { useState } from 'react';
 import { useApp, DEMO_USERS } from '@/stores/AppContext';
-import { X, Lock, Mail, User as UserIcon, Store, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
+import { X, Lock, Mail, User as UserIcon, Store } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+const fieldStyle: React.CSSProperties = {
+  width: '100%',
+  fontFamily: 'var(--font-sans)',
+  fontSize: '14px',
+  color: 'var(--espresso-ink)',
+  backgroundColor: 'var(--cream-deep)',
+  border: 'none',
+  borderBottom: '1px solid var(--cream-shadow)',
+  padding: '12px 12px 12px 36px',
+  outline: 'none',
+  borderRadius: 0,
+  transition: 'border-color 200ms ease',
+};
 
 export const AuthModal: React.FC = () => {
   const { isAuthModalOpen, setIsAuthModalOpen, authModalMode, setAuthModalMode, login } = useApp();
@@ -34,132 +48,292 @@ export const AuthModal: React.FC = () => {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        {/* Backdrop */}
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 50,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px',
+        }}
+      >
+        {/* Backdrop — dark scrim, no blur */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={() => setIsAuthModalOpen(false)}
-          className="fixed inset-0 bg-black/75 backdrop-blur-md"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(26,18,8,0.70)',
+          }}
         />
 
-        {/* Modal Window */}
+        {/* Modal Window — cream surface */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="relative w-full max-w-md rounded-3xl bg-[#17120e] border border-[#c89b3c]/20 shadow-2xl p-6 sm:p-8 text-white z-10 overflow-hidden"
+          style={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: '420px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
+            backgroundColor: 'var(--cream-base)',
+            border: '1px solid var(--cream-shadow)',
+            padding: '36px',
+            zIndex: 10,
+          }}
+          data-lenis-prevent
+          data-lenis-prevent-wheel
+          data-lenis-prevent-touch
+          role="dialog"
+          aria-modal="true"
+          aria-label={authModalMode === 'login' ? 'Đăng nhập' : 'Đăng ký'}
         >
-          {/* Subtle Ambient Glow */}
-          <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#c89b3c]/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-[#c89b3c]/10 rounded-full blur-3xl pointer-events-none" />
-
           {/* Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-white/10 relative">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              marginBottom: '32px',
+            }}
+          >
             <div>
-              <span className="text-[11px] font-semibold tracking-wider text-[#c89b3c] uppercase">
+              <p
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: 'var(--text-label)',
+                  fontWeight: 500,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  color: 'var(--copper-accent)',
+                  marginBottom: '8px',
+                }}
+              >
                 Aura Coffee ID
-              </span>
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5">
-                {authModalMode === 'login' ? 'Đăng Nhập Tài Khoản' : 'Đăng Ký Thành Viên'}
+              </p>
+              <h2
+                style={{
+                  fontFamily: 'var(--font-serif)',
+                  fontSize: '28px',
+                  fontWeight: 400,
+                  color: 'var(--espresso-ink)',
+                  lineHeight: 1.1,
+                }}
+              >
+                {authModalMode === 'login' ? 'Đăng nhập.' : 'Đăng ký.'}
               </h2>
             </div>
             <button
               onClick={() => setIsAuthModalOpen(false)}
-              className="p-2 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px',
+                color: 'var(--espresso-light)',
+                transition: 'color 200ms ease',
+              }}
               aria-label="Đóng"
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--espresso-ink)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--espresso-light)';
+              }}
             >
-              <X size={18} />
+              <X size={18} strokeWidth={1.5} />
             </button>
           </div>
 
-          {/* Quick 1-Click Demo Section */}
-          <div className="my-5 p-3.5 rounded-2xl bg-white/[0.04] border border-white/8">
-            <div className="flex items-center gap-1.5 text-xs text-[#c89b3c] font-medium mb-2.5">
-              <Sparkles size={14} />
-              <span>Đăng nhập nhanh 1-chạm (Dành cho trải nghiệm):</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
+          {/* Quick demo access */}
+          <div style={{ marginBottom: '32px' }}>
+            <p
+              style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: 'var(--text-label)',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: 'var(--espresso-light)',
+                marginBottom: '12px',
+              }}
+            >
+              Trải nghiệm nhanh
+            </p>
+            <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 type="button"
                 onClick={() => handleDemoLogin('owner')}
-                className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/8 hover:bg-white/15 border border-[#c89b3c]/20 text-xs font-medium text-white transition-all active:scale-95 text-center"
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: 'var(--espresso-mid)',
+                  backgroundColor: 'var(--cream-deep)',
+                  border: '1px solid var(--cream-shadow)',
+                  padding: '10px 12px',
+                  cursor: 'pointer',
+                  transition: 'border-color 200ms ease, color 200ms ease',
+                  minHeight: '44px',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--copper-accent)';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--espresso-ink)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--cream-shadow)';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--espresso-mid)';
+                }}
               >
-                <Store size={13} className="text-[#c89b3c]" />
-                <span>Chủ Quán Cà Phê</span>
+                <Store size={13} strokeWidth={1.5} />
+                Chủ Quán
               </button>
               <button
                 type="button"
                 onClick={() => handleDemoLogin('barista')}
-                className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/8 hover:bg-white/15 border border-[#c89b3c]/20 text-xs font-medium text-white transition-all active:scale-95 text-center"
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: 'var(--espresso-mid)',
+                  backgroundColor: 'var(--cream-deep)',
+                  border: '1px solid var(--cream-shadow)',
+                  padding: '10px 12px',
+                  cursor: 'pointer',
+                  transition: 'border-color 200ms ease, color 200ms ease',
+                  minHeight: '44px',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--copper-accent)';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--espresso-ink)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--cream-shadow)';
+                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--espresso-mid)';
+                }}
               >
-                <UserIcon size={13} className="text-[#e6bf70]" />
-                <span>Head Barista</span>
+                <UserIcon size={13} strokeWidth={1.5} />
+                Head Barista
               </button>
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex rounded-xl bg-black/40 p-1 mb-5 border border-white/8">
-            <button
-              type="button"
-              onClick={() => setAuthModalMode('login')}
-              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                authModalMode === 'login'
-                  ? 'bg-[#c89b3c] text-black font-bold shadow-md'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              Đăng Nhập
-            </button>
-            <button
-              type="button"
-              onClick={() => setAuthModalMode('register')}
-              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                authModalMode === 'register'
-                  ? 'bg-[#c89b3c] text-black font-bold shadow-md'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              Đăng Ký Mới
-            </button>
+          {/* Mode tabs */}
+          <div
+            style={{
+              display: 'flex',
+              borderBottom: '1px solid var(--cream-shadow)',
+              marginBottom: '28px',
+            }}
+          >
+            {(['login', 'register'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setAuthModalMode(mode)}
+                style={{
+                  flex: 1,
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  padding: '10px',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: authModalMode === mode
+                    ? '2px solid var(--copper-accent)'
+                    : '2px solid transparent',
+                  color: authModalMode === mode ? 'var(--espresso-ink)' : 'var(--espresso-light)',
+                  cursor: 'pointer',
+                  transition: 'color 200ms ease, border-color 200ms ease',
+                  marginBottom: '-1px',
+                }}
+              >
+                {mode === 'login' ? 'Đăng Nhập' : 'Đăng Ký Mới'}
+              </button>
+            ))}
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-3.5">
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {authModalMode === 'register' && (
               <>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-300 mb-1">
+                  <label
+                    htmlFor="auth-name"
+                    style={{
+                      fontFamily: 'var(--font-sans)',
+                      fontSize: 'var(--text-label)',
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      color: 'var(--espresso-light)',
+                      display: 'block',
+                      marginBottom: '8px',
+                    }}
+                  >
                     Họ và Tên
                   </label>
-                  <div className="relative">
-                    <UserIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                  <div style={{ position: 'relative' }}>
+                    <UserIcon
+                      size={14}
+                      style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--espresso-light)', pointerEvents: 'none' }}
+                    />
                     <input
+                      id="auth-name"
                       type="text"
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Nguyễn Văn A"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#c89b3c] focus:ring-1 focus:ring-[#c89b3c] transition-all"
+                      style={fieldStyle}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-neutral-300 mb-1">
-                    Tên Quán / Doanh Nghiệp (Tùy chọn)
+                  <label
+                    htmlFor="auth-shop"
+                    style={{
+                      fontFamily: 'var(--font-sans)',
+                      fontSize: 'var(--text-label)',
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      color: 'var(--espresso-light)',
+                      display: 'block',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    Tên Quán (Tùy chọn)
                   </label>
-                  <div className="relative">
-                    <Store size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                  <div style={{ position: 'relative' }}>
+                    <Store
+                      size={14}
+                      style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--espresso-light)', pointerEvents: 'none' }}
+                    />
                     <input
+                      id="auth-shop"
                       type="text"
                       value={shopName}
                       onChange={(e) => setShopName(e.target.value)}
                       placeholder="Aura Coffee & Roastery"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#c89b3c] focus:ring-1 focus:ring-[#c89b3c] transition-all"
+                      style={fieldStyle}
                     />
                   </div>
                 </div>
@@ -167,63 +341,96 @@ export const AuthModal: React.FC = () => {
             )}
 
             <div>
-              <label className="block text-xs font-medium text-neutral-300 mb-1">
-                Email hoặc Số Điện Thoại
+              <label
+                htmlFor="auth-email"
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: 'var(--text-label)',
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  color: 'var(--espresso-light)',
+                  display: 'block',
+                  marginBottom: '8px',
+                }}
+              >
+                Email
               </label>
-              <div className="relative">
-                <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <div style={{ position: 'relative' }}>
+                <Mail
+                  size={14}
+                  style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--espresso-light)', pointerEvents: 'none' }}
+                />
                 <input
+                  id="auth-email"
                   type="text"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="contact@yourcoffee.vn"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#c89b3c] focus:ring-1 focus:ring-[#c89b3c] transition-all"
+                  style={fieldStyle}
                 />
               </div>
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-medium text-neutral-300">
-                  Mật Khẩu
-                </label>
-                {authModalMode === 'login' && (
-                  <button
-                    type="button"
-                    className="text-[11px] text-[#c89b3c] hover:underline"
-                  >
-                    Quên mật khẩu?
-                  </button>
-                )}
-              </div>
-              <div className="relative">
-                <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <label
+                htmlFor="auth-password"
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: 'var(--text-label)',
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  color: 'var(--espresso-light)',
+                  display: 'block',
+                  marginBottom: '8px',
+                }}
+              >
+                Mật Khẩu
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Lock
+                  size={14}
+                  style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--espresso-light)', pointerEvents: 'none' }}
+                />
                 <input
+                  id="auth-password"
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#c89b3c] focus:ring-1 focus:ring-[#c89b3c] transition-all"
+                  style={fieldStyle}
                 />
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full mt-4 flex items-center justify-center gap-2 py-3 px-6 rounded-full bg-[#c89b3c] hover:bg-[#dfb153] text-black text-sm font-bold shadow-lg shadow-[#c89b3c]/25 transition-all active:scale-95"
+              style={{
+                marginTop: '8px',
+                fontFamily: 'var(--font-sans)',
+                fontSize: '14px',
+                fontWeight: 500,
+                letterSpacing: '0.04em',
+                color: 'var(--cream-base)',
+                backgroundColor: 'var(--copper-accent)',
+                border: 'none',
+                padding: '14px 28px',
+                cursor: 'pointer',
+                minHeight: '48px',
+                transition: 'background-color 250ms ease',
+                width: '100%',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--copper-light)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--copper-accent)';
+              }}
             >
-              <span>{authModalMode === 'login' ? 'Đăng Nhập & Tiếp Tục' : 'Tạo Tài Khoản Mới'}</span>
-              <ArrowRight size={16} />
+              {authModalMode === 'login' ? 'Đăng Nhập & Tiếp Tục' : 'Tạo Tài Khoản'}
             </button>
           </form>
-
-          {/* Footer Security Badge */}
-          <div className="mt-5 pt-3 border-t border-white/8 flex items-center justify-center gap-1.5 text-[11px] text-neutral-400">
-            <ShieldCheck size={13} className="text-emerald-400" />
-            <span>Bảo mật dữ liệu chuẩn Doanh Nghiệp Aura Coffee</span>
-          </div>
         </motion.div>
       </div>
     </AnimatePresence>

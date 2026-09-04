@@ -1,53 +1,62 @@
 import React from 'react';
 import {
   Hero,
-  CylindricalCarousel,
+  PhilosophySection,
+  SixPillars,
   EquipmentConfigurator,
   BeansSelection,
-  StartupFilmstrip,
-  SLABadges,
-  ProjectConfigurator,
+  ProcessTrack,
+  CommitmentStatement,
+  ProjectBuilder,
   SolutionsSection,
-  StoreFooter,
+  ContactSection,
+  SiteFooter,
 } from '@/components/store';
-import { Navbar, AuthModal, CartDrawer, Toast } from '@/components/shared';
+import { Navbar, AuthModal, CartDrawer, CheckoutModal, Toast } from '@/components/shared';
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#0d0a08] text-[#f5f5f7] relative">
-      {/* Top Header Navigation */}
+    <main style={{ minHeight: '100vh' }}>
+      {/* ── Global Overlay Navigation ── */}
       <Navbar />
 
-      {/* 01. Hero Section */}
+      {/* 01 · Hero */}
       <Hero />
 
-      {/* 02. 3D Cylindrical Ring Showcase */}
-      <CylindricalCarousel />
+      {/* 02 · Philosophy — empty editorial beat */}
+      <PhilosophySection />
 
-      {/* 03. Equipment Configurator & Spec Sheet */}
+      {/* 03 · Six Pillars — ecosystem map */}
+      <SixPillars />
+
+      {/* 04 · Equipment — full-bleed machine portrait */}
       <EquipmentConfigurator />
 
-      {/* 04. Specialty Beans Curation & Origin */}
+      {/* 05 · Beans & Origin — provenance */}
       <BeansSelection />
 
-      {/* 05. Build-out: Setup Quán Theo Filmstrip Vận Hành */}
-      <StartupFilmstrip />
+      {/* 06 · Process — four-step horizontal track */}
+      <ProcessTrack />
 
-      {/* 06. SLA & Maintenance Guarantees */}
-      <SLABadges />
+      {/* 07 · Commitment — typography-only trust */}
+      <CommitmentStatement />
 
-      {/* 07. Interactive Project Configurator */}
-      <ProjectConfigurator />
+      {/* 08 · Project Builder — configurator */}
+      <ProjectBuilder />
 
-      {/* 08. Turnkey Solutions & Packages */}
+      {/* 09 · Solutions — three packages */}
       <SolutionsSection />
 
-      {/* 09. Structured Store Footer & Newsletter */}
-      <StoreFooter />
+      {/* 10 · Contact / CTA — dark close */}
+      <ContactSection />
 
-      {/* Global Overlays */}
+      {/* 11 · Footer — typographic base */}
+      <SiteFooter />
+
+      {/* ── Global Overlays ── */}
       <AuthModal />
       <CartDrawer />
+      <CheckoutModal />
       <Toast />
     </main>
   );

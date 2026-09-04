@@ -1,16 +1,40 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/stores/AppContext';
-import { ShoppingBag, User as UserIcon, Phone, Menu, X, LogOut, Coffee, ChevronDown } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ShoppingBag, User as UserIcon, Menu, X, LogOut, ChevronDown } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const NAV_LINKS = [
-  { name: 'Trang Chủ', href: '#' },
-  { name: 'Sản Phẩm', href: '#' },
-  { name: 'Tin Tức', href: '#' },
-  { name: 'Liên Hệ', href: '#' },
+  { name: 'Trang Chủ', href: '/#pillars' },
+  { name: 'Sản Phẩm', href: '/products?domain=equipment' },
+  { name: 'Nguyên Liệu', href: '/products?domain=ingredients' },
+  { name: 'Tin Tức', href: '/news' },
+  { name: 'Liên Hệ', href: '/contact' },
 ];
+
+/* Coffee bean outline SVG — copper stroke, no fill */
+function CoffeeBeanIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 3C8.5 3 5 6.5 5 12s3.5 9 7 9 7-3.5 7-9-3.5-9-7-9Z"
+        stroke="var(--copper-accent)"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 3c0 4-2.5 7-2.5 9s2.5 5 2.5 9"
+        stroke="var(--copper-accent)"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 export const Navbar: React.FC = () => {
   const {
@@ -23,144 +47,305 @@ export const Navbar: React.FC = () => {
     setIsCartOpen,
   } = useApp();
 
+  const pathname = usePathname();
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [userDropOpen, setUserDropOpen] = useState(false);
+
+  const isLightPage =
+    pathname.startsWith('/products') ||
+    pathname.startsWith('/news') ||
+    pathname.startsWith('/contact');
+  const isSolidNav = scrolled || isLightPage;
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 15);
-    window.addEventListener('scroll', handleScroll);
+    const handleScroll = () => setScrolled(window.scrollY > 40);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    if (!userDropdownOpen) return;
-    const handleOutsideClick = () => setUserDropdownOpen(false);
-    document.addEventListener('click', handleOutsideClick);
-    return () => document.removeEventListener('click', handleOutsideClick);
-  }, [userDropdownOpen]);
+    if (!userDropOpen) return;
+    const close = () => setUserDropOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [userDropOpen]);
+
+  const scrolledStyle: React.CSSProperties = {
+    backgroundColor: 'rgba(245, 239, 230, 0.96)',
+    borderBottom: '1px solid var(--cream-shadow)',
+  };
+
+  const transparentStyle: React.CSSProperties = {
+    backgroundColor: 'transparent',
+    borderBottom: '1px solid transparent',
+  };
+
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith('/#') && pathname === '/') {
+      e.preventDefault();
+      const anchorId = href.replace('/', '');
+      const target = document.querySelector(anchorId);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
 
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-          scrolled ? 'glass-nav py-3' : 'bg-transparent py-4 sm:py-5'
-        }`}
+        id="navbar"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 40,
+          transition: 'background-color 200ms ease, border-color 200ms ease',
+          ...(isSolidNav ? scrolledStyle : transparentStyle),
+        }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-
-          {/* ── Brand Logo ── */}
-          <a
-            href="#"
-            className="flex items-center gap-2.5 group cursor-pointer focus:outline-none shrink-0"
+        <div
+          style={{
+            maxWidth: 'var(--container-max)',
+            marginInline: 'auto',
+            paddingInline: 'var(--container-x)',
+            paddingBlock: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '32px',
+          }}
+        >
+          {/* ── Brand ── */}
+          <Link
+            href="/"
+            aria-label="Aura Coffee Solutions — trang chủ"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              textDecoration: 'none',
+              flexShrink: 0,
+            }}
           >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#c89b3c] to-[#996515] flex items-center justify-center shadow-lg shadow-[#c89b3c]/20 group-hover:scale-105 transition-transform">
-              <Coffee size={16} className="text-white" />
-            </div>
-            <span className="font-bold text-sm sm:text-base tracking-[0.06em] text-white uppercase font-display group-hover:text-white/90 transition-colors">
-              AURA COFFEE
+            <CoffeeBeanIcon />
+            <span
+              style={{
+                fontFamily: 'var(--font-serif)',
+                fontWeight: 300,
+                fontSize: '18px',
+                letterSpacing: '0.02em',
+                color: isSolidNav ? 'var(--espresso-ink)' : '#FFFFFF',
+                transition: 'color 200ms ease',
+              }}
+            >
+              Aura Coffee
             </span>
-          </a>
+          </Link>
 
-          {/* ── Desktop Center Navigation ── */}
-          <nav className="hidden md:flex items-center gap-8" aria-label="Menu chính">
+          {/* ── Desktop Nav ── */}
+          <nav
+            className="hidden md:flex"
+            aria-label="Menu chính"
+            style={{ alignItems: 'center', gap: '32px' }}
+          >
             {NAV_LINKS.map((link) => (
-              <a
+              <Link
                 key={link.name}
                 href={link.href}
-                className="relative text-[13px] font-medium text-neutral-300 hover:text-white transition-colors py-1
-                  after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-[#c89b3c]
-                  after:transition-all after:duration-200 hover:after:w-full"
+                onClick={(e) => handleLinkClick(e, link.href)}
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '13px',
+                  fontWeight: 400,
+                  color: isSolidNav ? 'var(--espresso-mid)' : 'rgba(255,255,255,0.8)',
+                  textDecoration: 'none',
+                  paddingBottom: '2px',
+                  borderBottom: '1px solid transparent',
+                  transition: 'color 200ms ease, border-color 200ms ease',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.color = isSolidNav
+                    ? 'var(--espresso-ink)'
+                    : '#FFFFFF';
+                  (e.currentTarget as HTMLAnchorElement).style.borderBottomColor =
+                    'var(--copper-accent)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.color = isSolidNav
+                    ? 'var(--espresso-mid)'
+                    : 'rgba(255,255,255,0.8)';
+                  (e.currentTarget as HTMLAnchorElement).style.borderBottomColor = 'transparent';
+                }}
               >
                 {link.name}
-              </a>
+              </Link>
             ))}
           </nav>
 
           {/* ── Desktop Right Cluster ── */}
-          <div className="hidden md:flex items-center gap-2.5">
-
-            {/* Hotline */}
-            <a
-              href="tel:0909000247"
-              className="hidden lg:flex items-center gap-1.5 py-1.5 px-3.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-mono font-medium text-neutral-200 transition-all active:scale-95"
-            >
-              <Phone size={12} className="text-[#c89b3c]" />
-              <span>0909 000 247</span>
-            </a>
-
-            {/* Cart Button */}
+          <div className="hidden md:flex" style={{ alignItems: 'center', gap: '12px' }}>
+            {/* Cart / Quote Dossier icon */}
             <button
               id="navbar-cart-btn"
               onClick={() => setIsCartOpen(true)}
-              className="relative p-2.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-neutral-200 hover:text-white transition-all active:scale-95 cursor-pointer"
               aria-label="Giỏ hàng"
+              style={{
+                position: 'relative',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '6px',
+                color: isSolidNav ? 'var(--espresso-mid)' : 'rgba(255,255,255,0.75)',
+                transition: 'color 200ms ease',
+              }}
             >
-              <ShoppingBag size={16} />
+              <ShoppingBag size={18} strokeWidth={1.5} />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-[18px] h-[18px] rounded-full bg-[#c89b3c] text-black text-[10px] font-bold flex items-center justify-center shadow-lg animate-pulse">
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '0px',
+                    right: '0px',
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '9999px',
+                    backgroundColor: 'var(--copper-accent)',
+                    color: 'var(--cream-base)',
+                    fontSize: '10px',
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
                   {cartCount}
                 </span>
               )}
             </button>
 
-            {/* User / Login */}
+            {/* User Dropdown */}
             {isLoggedIn && user ? (
-              <div className="relative" onClick={(e) => e.stopPropagation()}>
+              <div style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
                 <button
                   id="navbar-user-btn"
-                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center gap-2 py-1.5 pl-2 pr-3 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-medium text-white transition-all cursor-pointer"
+                  onClick={() => setUserDropOpen(!userDropOpen)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    color: isSolidNav ? 'var(--espresso-mid)' : 'rgba(255,255,255,0.75)',
+                  }}
+                  aria-label="Tài khoản"
                 >
-                  {user.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                      className="w-6 h-6 rounded-full object-cover border border-[#c89b3c]/60"
-                    />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-[#c89b3c] flex items-center justify-center text-[10px] text-black font-bold">
-                      {user.name.charAt(0)}
-                    </div>
-                  )}
-                  <span className="max-w-[90px] truncate">{user.name.split(' ').pop()}</span>
-                  <ChevronDown size={12} className={`text-neutral-400 transition-transform duration-200 ${userDropdownOpen ? 'rotate-180' : ''}`} />
+                  <div
+                    style={{
+                      width: '26px',
+                      height: '26px',
+                      borderRadius: '9999px',
+                      backgroundColor: 'var(--copper-accent)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '11px',
+                      fontWeight: 500,
+                      color: 'var(--cream-base)',
+                    }}
+                  >
+                    {user.name.charAt(0)}
+                  </div>
+                  <ChevronDown
+                    size={12}
+                    style={{
+                      transform: userDropOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 200ms ease',
+                    }}
+                  />
                 </button>
 
                 <AnimatePresence>
-                  {userDropdownOpen && (
+                  {userDropOpen && (
                     <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                      transition={{ duration: 0.18 }}
-                      className="absolute right-0 mt-2.5 w-56 rounded-2xl bg-[#161618]/95 backdrop-blur-xl border border-white/12 shadow-2xl p-2 text-white z-50"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 6 }}
+                      transition={{ duration: 0.15 }}
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: '36px',
+                        width: '200px',
+                        backgroundColor: 'var(--cream-base)',
+                        border: '1px solid var(--cream-shadow)',
+                        borderRadius: '4px',
+                        padding: '8px',
+                        boxShadow: '0 8px 24px rgba(26,18,8,0.12)',
+                        zIndex: 50,
+                      }}
                     >
-                      <div className="px-3 py-2.5 border-b border-white/8 mb-1">
-                        <p className="text-xs font-semibold text-white truncate">{user.name}</p>
-                        <p className="text-[11px] text-neutral-400 truncate mt-0.5">{user.email}</p>
-                        {user.shopName && (
-                          <span className="mt-1 inline-block text-[10px] text-[#c89b3c] font-medium truncate">
-                            {user.shopName}
-                          </span>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() => { setUserDropdownOpen(false); setIsCartOpen(true); }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-neutral-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors text-left"
+                      <div
+                        style={{
+                          padding: '6px 8px',
+                          borderBottom: '1px solid var(--cream-shadow)',
+                          marginBottom: '4px',
+                        }}
                       >
-                        <ShoppingBag size={13} className="text-[#c89b3c]" />
-                        <span>Giỏ hàng & Báo giá</span>
-                      </button>
-
+                        <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--espresso-ink)', margin: 0 }}>
+                          {user.name}
+                        </p>
+                        <p style={{ fontSize: '11px', color: 'var(--espresso-light)', margin: 0 }}>
+                          {user.role === 'owner' ? 'Chủ Quán' : 'Barista'}
+                        </p>
+                      </div>
                       <button
-                        onClick={() => { setUserDropdownOpen(false); logout(); }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-xl transition-colors text-left"
+                        onClick={() => {
+                          setUserDropOpen(false);
+                          setIsCartOpen(true);
+                        }}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 12px',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          color: 'var(--espresso-mid)',
+                          textAlign: 'left',
+                        }}
+                      >
+                        Giỏ Hàng
+                      </button>
+                      <button
+                        onClick={() => {
+                          setUserDropOpen(false);
+                          logout();
+                        }}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 12px',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          color: '#B91C1C',
+                          textAlign: 'left',
+                        }}
                       >
                         <LogOut size={13} />
-                        <span>Đăng xuất</span>
+                        Đăng xuất
                       </button>
                     </motion.div>
                   )}
@@ -169,122 +354,211 @@ export const Navbar: React.FC = () => {
             ) : (
               <button
                 id="navbar-login-btn"
-                onClick={() => { setAuthModalMode('login'); setIsAuthModalOpen(true); }}
-                className="flex items-center gap-1.5 py-1.5 px-4 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-medium text-white transition-all active:scale-95 cursor-pointer"
+                onClick={() => {
+                  setAuthModalMode('login');
+                  setIsAuthModalOpen(true);
+                }}
+                aria-label="Đăng nhập"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  color: isSolidNav ? 'var(--espresso-mid)' : 'rgba(255,255,255,0.75)',
+                }}
               >
-                <UserIcon size={13} className="text-[#c89b3c]" />
-                <span>Đăng Nhập</span>
+                <UserIcon size={18} strokeWidth={1.5} />
               </button>
             )}
 
-            {/* Primary CTA */}
-            <a
-              href="#lien-he"
-              className="py-2 px-5 rounded-full bg-[#c89b3c] hover:bg-[#d8a946] text-black text-xs font-bold tracking-tight shadow-md shadow-[#c89b3c]/25 transition-all active:scale-95"
+            {/* Single primary CTA */}
+            <Link
+              href="/#contact"
+              id="navbar-cta"
+              onClick={(e) => handleLinkClick(e, '/#contact')}
+              style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: 'var(--cream-base)',
+                backgroundColor: 'var(--copper-accent)',
+                textDecoration: 'none',
+                padding: '8px 20px',
+                borderRadius: '4px',
+                transition: 'background-color 250ms ease',
+                display: 'inline-block',
+                minHeight: '44px',
+                lineHeight: '28px',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLAnchorElement).style.backgroundColor = 'var(--copper-light)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLAnchorElement).style.backgroundColor = 'var(--copper-accent)';
+              }}
             >
-              Tư Vấn Ngay
-            </a>
+              Nhận Báo Giá
+            </Link>
           </div>
 
-          {/* ── Mobile Right Controls ── */}
-          <div className="flex items-center gap-2 md:hidden">
+          {/* ── Mobile Controls ── */}
+          <div className="flex md:hidden" style={{ alignItems: 'center', gap: '8px' }}>
             <button
               id="mobile-cart-btn"
               onClick={() => setIsCartOpen(true)}
-              className="relative p-2 rounded-full bg-white/10 text-white border border-white/10"
               aria-label="Giỏ hàng"
+              style={{
+                position: 'relative',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '6px',
+                color: isSolidNav ? 'var(--espresso-mid)' : '#FFFFFF',
+              }}
             >
-              <ShoppingBag size={17} />
+              <ShoppingBag size={18} strokeWidth={1.5} />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#c89b3c] text-black text-[10px] font-bold flex items-center justify-center">
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '0',
+                    right: '0',
+                    width: '15px',
+                    height: '15px',
+                    borderRadius: '9999px',
+                    backgroundColor: 'var(--copper-accent)',
+                    color: 'var(--cream-base)',
+                    fontSize: '9px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
                   {cartCount}
                 </span>
               )}
             </button>
-
             <button
               id="mobile-menu-btn"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-full bg-white/10 text-white border border-white/10"
-              aria-label="Menu"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label={mobileOpen ? 'Đóng menu' : 'Mở menu'}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '6px',
+                color: isSolidNav ? 'var(--espresso-mid)' : '#FFFFFF',
+              }}
             >
-              {mobileMenuOpen ? <X size={19} /> : <Menu size={19} />}
+              {mobileOpen ? <X size={20} strokeWidth={1.5} /> : <Menu size={20} strokeWidth={1.5} />}
             </button>
           </div>
         </div>
 
-        {/* ── Mobile Slide-Down Menu ── */}
+        {/* ── Mobile Drawer ── */}
         <AnimatePresence>
-          {mobileMenuOpen && (
+          {mobileOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.22 }}
-              className="md:hidden bg-[#0d0d0f]/98 backdrop-blur-2xl border-b border-white/10 overflow-hidden"
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+              className="md:hidden"
+              style={{
+                backgroundColor: 'var(--cream-base)',
+                borderBottom: '1px solid var(--cream-shadow)',
+                overflow: 'hidden',
+              }}
             >
-              <div className="px-5 py-5 flex flex-col gap-1">
+              <nav style={{ padding: '16px var(--container-x) 8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {NAV_LINKS.map((link) => (
-                  <a
+                  <Link
                     key={link.name}
                     href={link.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="text-sm font-medium text-neutral-300 hover:text-white py-2.5 px-3 rounded-xl hover:bg-white/5 transition-all"
+                    onClick={(e) => {
+                      setMobileOpen(false);
+                      handleLinkClick(e, link.href);
+                    }}
+                    style={{
+                      fontFamily: 'var(--font-sans)',
+                      fontSize: '15px',
+                      color: 'var(--espresso-mid)',
+                      textDecoration: 'none',
+                      padding: '12px 0',
+                      borderBottom: '1px solid var(--cream-shadow)',
+                    }}
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 ))}
-
-                <div className="pt-3 mt-2 border-t border-white/10 flex flex-col gap-2.5">
-                  <a
-                    href="tel:0909000247"
-                    className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-[#c89b3c] font-mono"
-                  >
-                    <Phone size={14} />
-                    <span>Hotline: 0909 000 247</span>
-                  </a>
-
-                  {isLoggedIn && user ? (
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-full bg-[#c89b3c] flex items-center justify-center text-black text-sm font-bold shrink-0">
-                          {user.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold text-white">{user.name}</p>
-                          <p className="text-[11px] text-neutral-400 mt-0.5">{user.email}</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => { logout(); setMobileMenuOpen(false); }}
-                        className="text-xs text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-colors"
-                        aria-label="Đăng xuất"
-                      >
-                        <LogOut size={16} />
-                      </button>
-                    </div>
-                  ) : (
+              </nav>
+              <div
+                style={{
+                  padding: '16px var(--container-x) 24px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                }}
+              >
+                {isLoggedIn && user ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: '13px', color: 'var(--espresso-mid)' }}>
+                      {user.name}
+                    </span>
                     <button
                       onClick={() => {
-                        setMobileMenuOpen(false);
-                        setAuthModalMode('login');
-                        setIsAuthModalOpen(true);
+                        logout();
+                        setMobileOpen(false);
                       }}
-                      className="w-full py-2.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--espresso-light)' }}
+                      aria-label="Đăng xuất"
                     >
-                      <UserIcon size={14} className="text-[#c89b3c]" />
-                      Đăng Nhập Tài Khoản
+                      <LogOut size={16} strokeWidth={1.5} />
                     </button>
-                  )}
-
-                  <a
-                    href="#lien-he"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="w-full text-center py-3 rounded-full bg-[#c89b3c] hover:bg-[#d8a946] text-black text-xs font-bold transition-all"
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setMobileOpen(false);
+                      setAuthModalMode('login');
+                      setIsAuthModalOpen(true);
+                    }}
+                    style={{
+                      fontFamily: 'var(--font-sans)',
+                      fontSize: '14px',
+                      color: 'var(--espresso-mid)',
+                      background: 'none',
+                      border: '1px solid var(--cream-shadow)',
+                      padding: '12px',
+                      cursor: 'pointer',
+                      width: '100%',
+                    }}
                   >
-                    Tư Vấn Ngay
-                  </a>
-                </div>
+                    Đăng Nhập
+                  </button>
+                )}
+                <Link
+                  href="/#contact"
+                  onClick={(e) => {
+                    setMobileOpen(false);
+                    handleLinkClick(e, '/#contact');
+                  }}
+                  style={{
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: 'var(--cream-base)',
+                    backgroundColor: 'var(--copper-accent)',
+                    textDecoration: 'none',
+                    padding: '14px',
+                    textAlign: 'center',
+                    borderRadius: '4px',
+                    display: 'block',
+                    minHeight: '44px',
+                  }}
+                >
+                  Nhận Báo Giá
+                </Link>
               </div>
             </motion.div>
           )}

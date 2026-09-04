@@ -8,47 +8,105 @@ import { motion, AnimatePresence } from 'framer-motion';
 export const Toast: React.FC = () => {
   const { toasts, removeToast } = useApp();
 
+  const iconColor = (type: string) => {
+    if (type === 'success') return 'var(--copper-accent)';
+    if (type === 'cart') return 'var(--copper-light)';
+    return 'var(--espresso-light)';
+  };
+
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm pointer-events-none">
+    <div
+      style={{
+        position: 'fixed',
+        bottom: '24px',
+        right: '24px',
+        zIndex: 60,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        maxWidth: '360px',
+        pointerEvents: 'none',
+      }}
+    >
       <AnimatePresence>
         {toasts.map((toast) => (
           <motion.div
             key={toast.id}
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            initial={{ opacity: 0, y: 12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -15, scale: 0.95 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="pointer-events-auto flex items-start gap-3 p-4 rounded-2xl glass-panel-glow text-white shadow-2xl border border-white/15 backdrop-blur-xl"
+            style={{
+              pointerEvents: 'auto',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              padding: '16px 20px',
+              backgroundColor: 'var(--espresso-ink)',
+              border: '1px solid rgba(245,239,230,0.12)',
+              // No backdrop-blur, no glassmorphism
+            }}
           >
-            <div className="mt-0.5 shrink-0">
-              {toast.type === 'success' && (
-                <div className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                  <CheckCircle2 size={16} />
-                </div>
-              )}
-              {toast.type === 'cart' && (
-                <div className="w-6 h-6 rounded-full bg-[#c89b3c]/20 text-[#e6bf70] flex items-center justify-center">
-                  <ShoppingBag size={16} />
-                </div>
-              )}
-              {toast.type === 'info' && (
-                <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                  <Info size={16} />
-                </div>
-              )}
+            {/* Icon */}
+            <div
+              style={{
+                flexShrink: 0,
+                marginTop: '2px',
+                color: iconColor(toast.type),
+              }}
+            >
+              {toast.type === 'success' && <CheckCircle2 size={16} strokeWidth={1.5} />}
+              {toast.type === 'cart' && <ShoppingBag size={16} strokeWidth={1.5} />}
+              {toast.type === 'info' && <Info size={16} strokeWidth={1.5} />}
             </div>
 
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white tracking-tight">{toast.title}</p>
-              <p className="text-xs text-neutral-300 mt-0.5 line-clamp-2 leading-relaxed">{toast.message}</p>
+            {/* Content */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  color: 'var(--cream-base)',
+                  lineHeight: 1.3,
+                }}
+              >
+                {toast.title}
+              </p>
+              <p
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '13px',
+                  color: 'var(--espresso-light)',
+                  marginTop: '4px',
+                  lineHeight: 1.5,
+                }}
+              >
+                {toast.message}
+              </p>
             </div>
 
+            {/* Close */}
             <button
               onClick={() => removeToast(toast.id)}
-              className="text-neutral-400 hover:text-white transition-colors p-1 -mr-1 -mt-1 rounded-lg"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '2px',
+                color: 'var(--espresso-light)',
+                flexShrink: 0,
+                transition: 'color 200ms ease',
+              }}
               aria-label="Đóng thông báo"
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--cream-base)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--espresso-light)';
+              }}
             >
-              <X size={14} />
+              <X size={14} strokeWidth={1.5} />
             </button>
           </motion.div>
         ))}

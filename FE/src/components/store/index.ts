@@ -1,10 +1,12 @@
 // Store-specific section components
 export { Hero } from './Hero';
-export { CylindricalCarousel } from './CylindricalCarousel';
+export { PhilosophySection } from './PhilosophySection';
+export { SixPillars } from './SixPillars';
 export { EquipmentConfigurator } from './EquipmentConfigurator';
 export { BeansSelection } from './BeansSelection';
-export { StartupFilmstrip } from './StartupFilmstrip';
-export { SLABadges } from './SLABadges';
-export { ProjectConfigurator } from './ProjectConfigurator';
+export { ProcessTrack } from './ProcessTrack';
+export { CommitmentStatement } from './CommitmentStatement';
+export { ProjectBuilder } from './ProjectBuilder';
 export { SolutionsSection } from './SolutionsSection';
-export { StoreFooter } from './StoreFooter';
+export { ContactSection } from './ContactSection';
+export { SiteFooter } from './SiteFooter';
