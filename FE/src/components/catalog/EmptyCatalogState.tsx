@@ -5,7 +5,7 @@ import { RotateCcw, Send, Sparkles } from 'lucide-react';
 import { Product } from '@/types/product';
 import { EquipmentCard } from './EquipmentCard';
 import { IngredientCard } from './IngredientCard';
-import { useApp } from '@/stores/AppContext';
+import { useRouter } from 'next/navigation';
 
 interface EmptyCatalogStateProps {
   onResetFilters: () => void;
@@ -18,15 +18,9 @@ export const EmptyCatalogState: React.FC<EmptyCatalogStateProps> = ({
   featuredProducts,
   onOpenQuickSpec,
 }) => {
-  const { addToast } = useApp();
+  const router = useRouter();
 
-  const handleConciergeInquiry = () => {
-    addToast(
-      'Yêu Cầu Tìm Nguồn Riêng (B2B Concierge)',
-      'Chuyên viên dự án Aura Coffee đã nhận thông tin và sẽ liên hệ hỗ trợ bạn sau 15 phút.',
-      'success'
-    );
-  };
+  const handleConciergeInquiry = () => router.push('/contact');
 
   return (
     <div className="py-8 space-y-12">

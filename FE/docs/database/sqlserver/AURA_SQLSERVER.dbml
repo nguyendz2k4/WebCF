@@ -1,0 +1,343 @@
+Project AuraSqlServer {
+  database_type: 'MSSQL'
+  Note: 'SQL Server 2022. Full CHECKs, filtered indexes, computed LineTotal and triggers live in EF/SQL, not fully represented here. All timestamps UTC.'
+}
+
+Table Category {
+  Id uniqueidentifier [pk, not null, default: `NEWSEQUENTIALID()`]
+  CreatedAt datetime2(3) [not null, default: `SYSUTCDATETIME()`]
+  Code varchar(60) [not null]
+  Name nvarchar(120) [not null]
+  Domain varchar(16) [not null]
+  DisplayOrder int [not null, default: 0]
+  IsActive bit [not null, default: true]
+  Version rowversion [not null]
+  indexes {
+    (Id, Domain) [unique]
+    (Code) [unique]
+    (Domain, DisplayOrder)
+  }
+  Note: 'Phân loại máy pha, máy xay, hạt, siro...; 1-n Product.'
+}
+
+Table Brand {
+  Id uniqueidentifier [pk, not null, default: `NEWSEQUENTIALID()`]
+  CreatedAt datetime2(3) [not null, default: `SYSUTCDATETIME()`]
+  Code varchar(60) [not null]
+  Name nvarchar(120) [not null]
+  IsActive bit [not null, default: true]
+  Version rowversion [not null]
+  indexes {
+    (Code) [unique]
+    (Name) [unique]
+  }
+  Note: 'Thương hiệu danh mục, không phải nhà cung cấp.'
+}
+
+Table UseCase {
+  Id uniqueidentifier [pk, not null, default: `NEWSEQUENTIALID()`]
+  CreatedAt datetime2(3) [not null, default: `SYSUTCDATETIME()`]
+  Code varchar(40) [not null]
+  Name nvarchar(120) [not null]
+  Description nvarchar(500) [null]
+  DisplayOrder int [not null, default: 0]
+  IsActive bit [not null, default: true]
+  Version rowversion [not null]
+  indexes {
+    (Code) [unique]
+  }
+  Note: 'Nhu cầu sử dụng: home, small-cafe...; n-n Product qua ProductUseCase.'
+}
+
+Table Product {
+  Id uniqueidentifier [pk, not null, default: `NEWSEQUENTIALID()`]
+  CreatedAt datetime2(3) [not null, default: `SYSUTCDATETIME()`]
+  LegacyId varchar(100) [null]
+  Slug varchar(160) [not null]
+  Sku varchar(60) [null]
+  Name nvarchar(250) [not null]
+  CategoryId uniqueidentifier [not null]
+  Domain varchar(16) [not null]
+  BrandId uniqueidentifier [not null]
+  ShortDescription nvarchar(2000) [not null]
+  PriceMode varchar(12) [not null]
+  Price decimal(18,0) [null]
+  IsAvailableForOrder bit [not null]
+  IsPublished bit [not null, default: false]
+  IsFeatured bit [not null, default: false]
+  LeadTimeNotice nvarchar(300) [null]
+  ArchivedAt datetime2(3) [null]
+  UpdatedAt datetime2(3) [null]
+  Version rowversion [not null]
+  GroupsCount int [null]
+  Boiler nvarchar(200) [null]
+  BoilerCapacity nvarchar(120) [null]
+  Pump nvarchar(150) [null]
+  PowerLabel nvarchar(100) [null]
+  Voltage varchar(16) [null]
+  Dimensions nvarchar(120) [null]
+  WeightLabel nvarchar(80) [null]
+  Warranty nvarchar(200) [null]
+  DailyCapacityLabel nvarchar(150) [null]
+  Origin nvarchar(150) [null]
+  SubRegion nvarchar(150) [null]
+  Altitude nvarchar(100) [null]
+  Process nvarchar(150) [null]
+  RoastProfile varchar(20) [null]
+  CuppingScore decimal(5,2) [null]
+  FlavorNotesJson nvarchar(max) [null]
+  UnitSize nvarchar(100) [null]
+  CaseSize nvarchar(100) [null]
+  ShelfLife nvarchar(150) [null]
+  indexes {
+    (Slug) [unique]
+    (Sku) [unique, note: 'SQL Server filter: [Sku] IS NOT NULL']
+    (LegacyId) [unique, note: 'SQL Server filter: [LegacyId] IS NOT NULL']
+    (CategoryId, Price, Id) [note: 'SQL Server filter: [ArchivedAt] IS NULL AND [IsPublished] = 1']
+    (BrandId, CategoryId)
+    (Domain, IsFeatured, CreatedAt, Id) [note: 'SQL Server filter: [ArchivedAt] IS NULL AND [IsPublished] = 1; DESC mask: false,true,true,false']
+    (CategoryId, Domain)
+  }
+  Note: 'Một bảng Product với discriminator và CHECK; NULL hợp lệ cho thông số không áp dụng. Domain khớp Category bằng FK ghép.'
+}
+
+Table ProductUseCase {
+  Id uniqueidentifier [pk, not null, default: `NEWSEQUENTIALID()`]
+  CreatedAt datetime2(3) [not null, default: `SYSUTCDATETIME()`]
+  ProductId uniqueidentifier [not null]
+  UseCaseId uniqueidentifier [not null]
+  indexes {
+    (ProductId, UseCaseId) [unique]
+    (UseCaseId, ProductId)
+  }
+  Note: 'Bảng nối n-n. Unique(ProductId,UseCaseId); không lặp hai thẻ nhu cầu cho cùng sản phẩm.'
+}
+
+Table ProductMedia {
+  Id uniqueidentifier [pk, not null, default: `NEWSEQUENTIALID()`]
+  CreatedAt datetime2(3) [not null, default: `SYSUTCDATETIME()`]
+  ProductId uniqueidentifier [not null]
+  Url nvarchar(1000) [not null]
+  AltText nvarchar(300) [null]
+  Position int [not null]
+  indexes {
+    (ProductId, Position) [unique]
+  }
+  Note: 'Ảnh duy nhất tại Position=0 là cover; ảnh còn lại thứ tự 1,2...; không lặp cover ở Product.'
+}
+
+Table AppUser {
+  Id uniqueidentifier [pk, not null, default: `NEWSEQUENTIALID()`]
+  CreatedAt datetime2(3) [not null, default: `SYSUTCDATETIME()`]
+  IdentityIssuer varchar(100) [not null]
+  IdentitySubject varchar(200) [not null]
+  DisplayName nvarchar(150) [not null]
+  Email nvarchar(254) [not null]
+  Phone nvarchar(30) [null]
+  AvatarUrl nvarchar(1000) [null]
+  CustomerPersona varchar(20) [null]
+  ShopName nvarchar(150) [null]
+  DisabledAt datetime2(3) [null]
+  Version rowversion [not null]
+  indexes {
+    (IdentityIssuer, IdentitySubject) [unique]
+  }
+  Note: 'Hồ sơ gắn identity đã xác thực; không lưu mật khẩu giả, địa chỉ hay quyền admin trong persona.'
+}
+
+Table Order {
+  Id uniqueidentifier [pk, not null, default: `NEWSEQUENTIALID()`]
+  CreatedAt datetime2(3) [not null, default: `SYSUTCDATETIME()`]
+  OrderCode varchar(32) [not null]
+  CustomerId uniqueidentifier [not null]
+  IdempotencyKey uniqueidentifier [not null]
+  RequestHash varchar(64) [not null]
+  Currency varchar(3) [not null]
+  PreferredPaymentMethod varchar(12) [not null]
+  RecipientName nvarchar(150) [not null]
+  Phone nvarchar(30) [not null]
+  Email nvarchar(254) [null]
+  AddressLine nvarchar(400) [not null]
+  Province nvarchar(120) [not null]
+  District nvarchar(120) [null]
+  DeliveryNote nvarchar(1000) [null]
+  Subtotal decimal(18,0) [not null]
+  DiscountTotal decimal(18,0) [not null]
+  ShippingFee decimal(18,0) [not null]
+  Total decimal(18,0) [not null]
+  TaxIncludedAmount decimal(18,0) [null]
+  SubmittedAt datetime2(3) [null]
+  Version rowversion [not null]
+  indexes {
+    (OrderCode) [unique]
+    (CustomerId, IdempotencyKey) [unique]
+    (CustomerId, CreatedAt, Id) [note: 'DESC mask: false,true,false']
+  }
+  Note: 'Đơn chốt bất biến cả header và shipping; draft nội bộ chỉ trong transaction. Tổng giá gồm VAT theo hợp đồng hiển thị hiện tại. Trigger/procedure guarded; DBML does not enforce immutability.'
+}
+
+Table OrderItem {
+  Id uniqueidentifier [pk, not null, default: `NEWSEQUENTIALID()`]
+  CreatedAt datetime2(3) [not null, default: `SYSUTCDATETIME()`]
+  OrderId uniqueidentifier [not null]
+  ProductId uniqueidentifier [not null]
+  LineNumber int [not null]
+  ProductName nvarchar(250) [not null]
+  Sku varchar(60) [null]
+  Specification nvarchar(1000) [null]
+  UnitLabel nvarchar(100) [null]
+  UnitPrice decimal(18,0) [not null]
+  Quantity int [not null]
+  DiscountAmount decimal(18,0) [not null]
+  LineTotal decimal(18,0) [not null, note: 'Computed persisted: CONVERT(decimal(18,0), [UnitPrice] * [Quantity] - [DiscountAmount])']
+  TaxIncludedAmount decimal(18,0) [null]
+  indexes {
+    (OrderId, LineNumber) [unique]
+    (ProductId)
+  }
+  Note: 'Bản sao thương mại, không đọc giá/tên hiện tại khi xem hóa đơn. FK NO ACTION bảo vệ sản phẩm đã có lịch sử. Trigger/procedure guarded; DBML does not enforce immutability.'
+}
+
+Table OrderEvent {
+  Id uniqueidentifier [pk, not null, default: `NEWSEQUENTIALID()`]
+  CreatedAt datetime2(3) [not null, default: `SYSUTCDATETIME()`]
+  OrderId uniqueidentifier [not null]
+  Sequence int [not null]
+  Status varchar(20) [not null]
+  ActorId uniqueidentifier [not null]
+  Note nvarchar(1000) [null]
+  indexes {
+    (OrderId, Sequence) [unique]
+    (Status, CreatedAt)
+    (ActorId)
+  }
+  Note: 'Lịch sử trạng thái append-only; không sửa trạng thái cũ. Trigger/procedure guarded; DBML does not enforce immutability.'
+}
+
+Table PaymentAttempt {
+  Id uniqueidentifier [pk, not null, default: `NEWSEQUENTIALID()`]
+  CreatedAt datetime2(3) [not null, default: `SYSUTCDATETIME()`]
+  OrderId uniqueidentifier [not null]
+  RequestedById uniqueidentifier [not null]
+  IdempotencyKey uniqueidentifier [not null]
+  Method varchar(12) [not null]
+  RequestedAmount decimal(18,0) [not null]
+  TransferReference varchar(100) [null]
+  DestinationSnapshot nvarchar(1000) [null]
+  ExpiresAt datetime2(3) [null]
+  indexes {
+    (Id, OrderId) [unique]
+    (OrderId, IdempotencyKey) [unique]
+    (TransferReference) [unique, note: 'SQL Server filter: [TransferReference] IS NOT NULL']
+    (RequestedById)
+  }
+  Note: 'Yêu cầu thanh toán/đích chuyển khoản; không chứng minh tiền đã vào. Trigger/procedure guarded; DBML does not enforce immutability.'
+}
+
+Table PaymentAttemptEvent {
+  Id uniqueidentifier [pk, not null, default: `NEWSEQUENTIALID()`]
+  CreatedAt datetime2(3) [not null, default: `SYSUTCDATETIME()`]
+  PaymentAttemptId uniqueidentifier [not null]
+  ActorId uniqueidentifier [not null]
+  EventType varchar(24) [not null]
+  Note nvarchar(1000) [null]
+  indexes {
+    (PaymentAttemptId, CreatedAt, Id)
+    (ActorId)
+  }
+  Note: 'Log báo đã chuyển, thất bại, hết hạn; không cộng tiền vào doanh thu. Trigger/procedure guarded; DBML does not enforce immutability.'
+}
+
+Table PaymentEntry {
+  Id uniqueidentifier [pk, not null, default: `NEWSEQUENTIALID()`]
+  CreatedAt datetime2(3) [not null, default: `SYSUTCDATETIME()`]
+  OrderId uniqueidentifier [not null]
+  PaymentAttemptId uniqueidentifier [not null]
+  RecordedById uniqueidentifier [not null]
+  IdempotencyKey uniqueidentifier [not null]
+  Kind varchar(12) [not null]
+  Amount decimal(18,0) [not null]
+  ExternalSource varchar(80) [not null]
+  ExternalReference varchar(160) [not null]
+  OccurredAt datetime2(3) [not null]
+  ReversesEntryId uniqueidentifier [null]
+  Reason nvarchar(1000) [null]
+  indexes {
+    (IdempotencyKey) [unique]
+    (ExternalSource, ExternalReference) [unique]
+    (OrderId, CreatedAt, Id)
+    (ReversesEntryId) [note: 'SQL Server filter: [ReversesEntryId] IS NOT NULL']
+    (PaymentAttemptId, OrderId)
+    (RecordedById)
+  }
+  Note: 'Tiền thực nhận/hoàn thực tế append-only; hoàn liên kết receipt, cùng đơn/attempt và không vượt receipt. Trigger/procedure guarded; DBML does not enforce immutability.'
+}
+
+Table NewsArticle {
+  Id uniqueidentifier [pk, not null, default: `NEWSEQUENTIALID()`]
+  CreatedAt datetime2(3) [not null, default: `SYSUTCDATETIME()`]
+  Slug varchar(160) [not null]
+  Title nvarchar(250) [not null]
+  Excerpt nvarchar(2000) [not null]
+  CategoryCode varchar(30) [not null]
+  PublishedAt datetime2(3) [null]
+  CoverImageUrl nvarchar(1000) [not null]
+  AuthorName nvarchar(150) [not null]
+  AuthorRole nvarchar(200) [not null]
+  AuthorAvatarUrl nvarchar(1000) [null]
+  ReadTimeMinutes int [not null]
+  TagsJson nvarchar(max) [not null, default: '[]']
+  LeadParagraph nvarchar(max) [not null]
+  SectionsJson nvarchar(max) [not null]
+  IsFeatured bit [not null, default: false]
+  ArchivedAt datetime2(3) [null]
+  Version rowversion [not null]
+  indexes {
+    (Slug) [unique]
+    (CategoryCode, PublishedAt, Id) [note: 'SQL Server filter: [ArchivedAt] IS NULL AND [PublishedAt] IS NOT NULL; DESC mask: false,true,false']
+  }
+  Note: 'Author inline, tag JSON; phút đọc số cập nhật cùng nội dung; PublishedAt NULL là draft.'
+}
+
+Table ContactInquiry {
+  Id uniqueidentifier [pk, not null, default: `NEWSEQUENTIALID()`]
+  CreatedAt datetime2(3) [not null, default: `SYSUTCDATETIME()`]
+  CustomerId uniqueidentifier [null]
+  FullName nvarchar(150) [not null]
+  Phone nvarchar(30) [not null]
+  Email nvarchar(254) [not null]
+  BusinessName nvarchar(150) [null]
+  ServiceType varchar(30) [not null]
+  BudgetRange varchar(30) [null]
+  Message nvarchar(4000) [null]
+  Source varchar(30) [not null]
+  LegacyPackageCode varchar(100) [null]
+  ConfigurationJson nvarchar(max) [null]
+  Status varchar(20) [not null, default: 'new']
+  Version rowversion [not null]
+  indexes {
+    (Status, CreatedAt)
+    (CustomerId)
+  }
+  Note: 'Liên hệ, gói giải pháp/thuê và cấu hình dự toán; chưa là đơn có nghĩa vụ thanh toán.'
+}
+
+Ref: Product.(CategoryId, Domain) > Category.(Id, Domain) [delete: no action]
+Ref: Product.BrandId > Brand.Id [delete: no action]
+Ref: ProductUseCase.ProductId > Product.Id [delete: no action]
+Ref: ProductUseCase.UseCaseId > UseCase.Id [delete: no action]
+Ref: ProductMedia.ProductId > Product.Id [delete: no action]
+Ref: Order.CustomerId > AppUser.Id [delete: no action]
+Ref: OrderItem.OrderId > Order.Id [delete: no action]
+Ref: OrderItem.ProductId > Product.Id [delete: no action]
+Ref: OrderEvent.OrderId > Order.Id [delete: no action]
+Ref: OrderEvent.ActorId > AppUser.Id [delete: no action]
+Ref: PaymentAttempt.OrderId > Order.Id [delete: no action]
+Ref: PaymentAttempt.RequestedById > AppUser.Id [delete: no action]
+Ref: PaymentAttemptEvent.PaymentAttemptId > PaymentAttempt.Id [delete: no action]
+Ref: PaymentAttemptEvent.ActorId > AppUser.Id [delete: no action]
+Ref: PaymentEntry.OrderId > Order.Id [delete: no action]
+Ref: PaymentEntry.(PaymentAttemptId, OrderId) > PaymentAttempt.(Id, OrderId) [delete: no action]
+Ref: PaymentEntry.RecordedById > AppUser.Id [delete: no action]
+Ref: PaymentEntry.ReversesEntryId > PaymentEntry.Id [delete: no action]
+Ref: ContactInquiry.CustomerId > AppUser.Id [delete: no action]

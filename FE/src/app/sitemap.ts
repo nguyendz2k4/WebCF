@@ -1,8 +1,9 @@
 import type { MetadataRoute } from 'next';
-import { PRODUCTS_DATA } from '@/data/products';
-import { NEWS_ARTICLES } from '@/data/news';
+import { getProducts, getArticles } from '@/lib/public-data';
+export const dynamic = 'force-dynamic';
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const [products, articles] = await Promise.all([getProducts(), getArticles()]);
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -44,14 +45,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
-  const productRoutes: MetadataRoute.Sitemap = PRODUCTS_DATA.map((product) => ({
+  const productRoutes: MetadataRoute.Sitemap = products.map((product) => ({
     url: `${baseUrl}/products/${product.slug}`,
     lastModified: product.createdAt ? new Date(product.createdAt) : new Date(),
     changeFrequency: 'weekly',
     priority: 0.8,
   }));
 
-  const newsRoutes: MetadataRoute.Sitemap = NEWS_ARTICLES.map((article) => ({
+  const newsRoutes: MetadataRoute.Sitemap = articles.map((article) => ({
     url: `${baseUrl}/news/${article.slug}`,
     lastModified: new Date(),
     changeFrequency: 'monthly',

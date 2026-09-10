@@ -35,10 +35,8 @@ export const CategorySubBar: React.FC<CategorySubBarProps> = ({
       <div className="max-w-[var(--container-max)] mx-auto px-6 md:px-12">
         <div
           className="flex items-center gap-6 sm:gap-8 overflow-x-auto no-scrollbar py-3.5"
-          data-lenis-prevent
-          data-lenis-prevent-wheel
           data-lenis-prevent-touch
-          style={{ overscrollBehavior: 'contain' }}
+          style={{ overscrollBehaviorX: 'contain', overscrollBehaviorY: 'auto' }}
         >
           {categories.map((cat) => {
             const isActive = activeCategory === cat.slug || (!activeCategory && cat.slug === 'all');

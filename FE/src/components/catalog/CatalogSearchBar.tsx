@@ -37,11 +37,12 @@ export const CatalogSearchBar: React.FC<CatalogSearchBarProps> = ({
 
   // Debounced parent notification
   useEffect(() => {
+    if (query === value) return;
     const timer = setTimeout(() => {
       onChange(query);
     }, 250);
     return () => clearTimeout(timer);
-  }, [query, onChange]);
+  }, [query, value, onChange]);
 
   // Close on outside click
   useEffect(() => {

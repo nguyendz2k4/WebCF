@@ -1,3 +1,4 @@
+import { AppProvider } from '@/stores/AppContext';
 import React from 'react';
 import Link from 'next/link';
 import type { Metadata } from 'next';
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function NotFound() {
   return (
-    <main className="min-h-screen flex flex-col bg-[var(--cream-base)]">
+    <AppProvider><main className="min-h-screen flex flex-col bg-[var(--cream-base)]">
       {/* Global Header */}
       <Navbar />
 
@@ -81,6 +82,6 @@ export default function NotFound() {
       <CartDrawer />
       <CheckoutModal />
       <Toast />
-    </main>
+    </main></AppProvider>
   );
 }

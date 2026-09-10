@@ -1,20 +1,19 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { NEWS_ARTICLES } from '@/data/news';
-import { NewsCategory } from '@/types/news';
+import { NewsCategory, NewsArticle } from '@/types/news';
 import { NewsCard } from './NewsCard';
 import { NewsFilterBar } from './NewsFilterBar';
 
-export const NewsClientView: React.FC = () => {
+export const NewsClientView: React.FC<{ articles: NewsArticle[] }> = ({ articles }) => {
   const [selectedCategory, setSelectedCategory] = useState<NewsCategory>('all');
 
   const filteredArticles = useMemo(() => {
     if (selectedCategory === 'all') {
-      return NEWS_ARTICLES;
+      return articles;
     }
-    return NEWS_ARTICLES.filter((article) => article.category === selectedCategory);
-  }, [selectedCategory]);
+    return articles.filter((article) => article.category === selectedCategory);
+  }, [selectedCategory, articles]);
 
   return (
     <section className="w-full">

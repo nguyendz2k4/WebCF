@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useApp, DEMO_USERS } from '@/stores/AppContext';
+import React, { useState, useEffect, useRef } from 'react';
+import { errorMessage } from '@/lib/api-client';
+import { useApp } from '@/stores/AppContext';
 import { X, Lock, Mail, User as UserIcon, Store } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -20,31 +21,31 @@ const fieldStyle: React.CSSProperties = {
 };
 
 export const AuthModal: React.FC = () => {
-  const { isAuthModalOpen, setIsAuthModalOpen, authModalMode, setAuthModalMode, login } = useApp();
+  const { isAuthModalOpen, setIsAuthModalOpen, authModalMode, setAuthModalMode, login, register } = useApp();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [shopName, setShopName] = useState('');
 
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const lock = useRef(false);
+  useEffect(() => { if (!isAuthModalOpen) { setPassword(''); setError(''); } }, [isAuthModalOpen]);
   if (!isAuthModalOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login({
-      name: name || (email.split('@')[0] ? email.split('@')[0] : 'Quý Khách Hàng'),
-      email: email || 'khachhang@auracoffee.vn',
-      role: 'owner',
-      shopName: shopName || 'Dự Án Quán Mới',
-    });
+    if (lock.current) return;
+    lock.current = true; setSubmitting(true); setError('');
+    try {
+      if (authModalMode === 'login') await login({ email: email.trim(), password });
+      else await register({ email: email.trim(), password, name: name.trim(), shopName: shopName.trim() });
+      setPassword('');
+    } catch (error) { setError(errorMessage(error)); }
+    finally { lock.current = false; setSubmitting(false); }
   };
 
-  const handleDemoLogin = (role: 'owner' | 'barista') => {
-    const demoUser = DEMO_USERS[role];
-    if (demoUser) {
-      login(demoUser);
-    }
-  };
 
   return (
     <AnimatePresence>
@@ -154,88 +155,6 @@ export const AuthModal: React.FC = () => {
             </button>
           </div>
 
-          {/* Quick demo access */}
-          <div style={{ marginBottom: '32px' }}>
-            <p
-              style={{
-                fontFamily: 'var(--font-sans)',
-                fontSize: 'var(--text-label)',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                color: 'var(--espresso-light)',
-                marginBottom: '12px',
-              }}
-            >
-              Trải nghiệm nhanh
-            </p>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('owner')}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  fontFamily: 'var(--font-sans)',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  color: 'var(--espresso-mid)',
-                  backgroundColor: 'var(--cream-deep)',
-                  border: '1px solid var(--cream-shadow)',
-                  padding: '10px 12px',
-                  cursor: 'pointer',
-                  transition: 'border-color 200ms ease, color 200ms ease',
-                  minHeight: '44px',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--copper-accent)';
-                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--espresso-ink)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--cream-shadow)';
-                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--espresso-mid)';
-                }}
-              >
-                <Store size={13} strokeWidth={1.5} />
-                Chủ Quán
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('barista')}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  fontFamily: 'var(--font-sans)',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  color: 'var(--espresso-mid)',
-                  backgroundColor: 'var(--cream-deep)',
-                  border: '1px solid var(--cream-shadow)',
-                  padding: '10px 12px',
-                  cursor: 'pointer',
-                  transition: 'border-color 200ms ease, color 200ms ease',
-                  minHeight: '44px',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--copper-accent)';
-                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--espresso-ink)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--cream-shadow)';
-                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--espresso-mid)';
-                }}
-              >
-                <UserIcon size={13} strokeWidth={1.5} />
-                Head Barista
-              </button>
-            </div>
-          </div>
-
           {/* Mode tabs */}
           <div
             style={{
@@ -248,7 +167,8 @@ export const AuthModal: React.FC = () => {
               <button
                 key={mode}
                 type="button"
-                onClick={() => setAuthModalMode(mode)}
+                disabled={submitting}
+                onClick={() => { setError(''); setAuthModalMode(mode); }}
                 style={{
                   flex: 1,
                   fontFamily: 'var(--font-sans)',
@@ -362,7 +282,9 @@ export const AuthModal: React.FC = () => {
                 />
                 <input
                   id="auth-email"
-                  type="text"
+                  type="email"
+                  autoComplete="username"
+                  maxLength={254}
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -395,6 +317,9 @@ export const AuthModal: React.FC = () => {
                 <input
                   id="auth-password"
                   type="password"
+                  minLength={authModalMode === "register" ? 12 : 1}
+                  maxLength={128}
+                  autoComplete={authModalMode === "login" ? "current-password" : "new-password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -404,7 +329,9 @@ export const AuthModal: React.FC = () => {
               </div>
             </div>
 
+            {error && <p role="alert" style={{ color: "#a12424" }}>{error}</p>}
             <button
+              disabled={submitting}
               type="submit"
               style={{
                 marginTop: '8px',
@@ -428,7 +355,7 @@ export const AuthModal: React.FC = () => {
                 (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--copper-accent)';
               }}
             >
-              {authModalMode === 'login' ? 'Đăng Nhập & Tiếp Tục' : 'Tạo Tài Khoản'}
+              {submitting ? 'Đang xử lý…' : authModalMode === 'login' ? 'Đăng Nhập & Tiếp Tục' : 'Tạo Tài Khoản'}
             </button>
           </form>
         </motion.div>

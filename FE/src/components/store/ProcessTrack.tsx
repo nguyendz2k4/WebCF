@@ -149,8 +149,6 @@ export const ProcessTrack: React.FC = () => {
       <div
         ref={trackRef}
         className="no-scrollbar"
-        data-lenis-prevent
-        data-lenis-prevent-wheel
         data-lenis-prevent-touch
         style={{
           display: 'flex',
@@ -158,7 +156,8 @@ export const ProcessTrack: React.FC = () => {
           scrollSnapType: 'x mandatory',
           WebkitOverflowScrolling: 'touch',
           gap: '0',
-          overscrollBehavior: 'contain',
+          overscrollBehaviorX: 'contain',
+          overscrollBehaviorY: 'auto',
         }}
         onScroll={(e) => {
           const track = e.currentTarget;

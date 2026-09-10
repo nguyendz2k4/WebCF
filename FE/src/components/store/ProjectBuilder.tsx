@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useApp } from '@/stores/AppContext';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ModelOption {
@@ -78,7 +78,7 @@ function ChevronDown() {
 }
 
 export const ProjectBuilder: React.FC = () => {
-  const { addToCart, setIsCartOpen, addToast } = useApp();
+  const router = useRouter();
   const [selectedModelId, setSelectedModelId] = useState('kiosk');
   const [capacity, setCapacity] = useState(120);
   const [budget, setBudget] = useState(450);
@@ -100,20 +100,7 @@ export const ProjectBuilder: React.FC = () => {
     return { machine, beans, build: currentModel.recommendedBuild };
   }, [currentModel, capacity, budget]);
 
-  const handleGetQuote = () => {
-    addToCart({
-      id: `project_${selectedModelId}`,
-      title: `Dự Án: ${currentModel.name}`,
-      category: 'package',
-      price: currentModel.rawEstimatedPrice,
-      formattedPrice: `${(currentModel.rawEstimatedPrice / 1_000_000).toFixed(0)}M ₫`,
-      image: '',
-      subtitle: `${capacity} ly/ngày · ${budget}m²`,
-      specs: `${recommendation.machine}`,
-    });
-    addToast('Đã thêm hồ sơ', `Dự án ${currentModel.name} đã được thêm để nhận báo giá.`, 'success');
-    setIsCartOpen(true);
-  };
+  const handleGetQuote = () => router.push('/contact');
 
   const SliderInput = ({
     id,

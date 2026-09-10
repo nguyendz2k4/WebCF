@@ -10,6 +10,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
         disallow: [
           '/api/',
+          '/admin', // Admin workspace
           '/thank-you', // Private post-order state
         ],
       },

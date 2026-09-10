@@ -36,13 +36,13 @@ Every entity identified during the Phase 0 audit is categorized by architectural
 ├──────────────────────────┬──────────────────────────┬──────────────────────────────────┤
 │   PERSISTENT ENTITIES    │   REFERENCE & VALUES     │        TRANSIENT / DERIVED       │
 ├──────────────────────────┼──────────────────────────┼──────────────────────────────────┤
-│ • User (Root)            │ • Category (Ref)         │ • Cart (Transient Session)       │
+│ • User (Root - No Address) │ • Category (Ref)         │ • Cart (Transient Session)       │
 │ • Product (Root)         │ • Brand (Ref)            │ • CartItem (Transient DTO)       │
-│ • EquipmentSpecs (Sub)   │ • Author (Value Object)  │ • EquipmentTier (Deprecated UI)  │
-│ • IngredientSpecs (Sub)  │ • Tag (Value Object)     │ • CoffeeBean (Deprecated UI)     │
-│ • Order (Root)           │ • Address (Value Object) │ • ProjectBuilder (UI Algorithm)  │
+│ • EquipmentSpecs (Sub)   │ • Author (Embedded VO)   │ • EquipmentTier (Deprecated UI)  │
+│ • IngredientSpecs (Sub)  │ • Tag (Native Array/JSON)│ • CoffeeBean (Deprecated UI)     │
+│ • Order (Root)           │ • OrderAddress (Snap VO) │ • ProjectBuilder (UI Algorithm)  │
 │ • OrderItem (Sub)        │ • SpecsSummary (Derived) │ • formattedPrice (Derived UI)    │
-│ • ContactInquiry (Root)  │                          │ • orderTotal (Derived Aggregate) │
+│ • ContactInquiry (Root)  │                          │ • cartTotal (Derived Transient)  │
 │ • NewsArticle (Root)     │                          │                                  │
 └──────────────────────────┴──────────────────────────┴──────────────────────────────────┘
 ```
@@ -51,19 +51,19 @@ Every entity identified during the Phase 0 audit is categorized by architectural
 
 | Codebase Entity | Phase 1 Classification | Owning Aggregate | Rationale & Lifecycle Rule |
 |---|---|---|---|
-| **User** | **PERSISTENT ENTITY** | User Aggregate | Independent lifecycle. Represents customers, business owners, and staff accounts. Authoritative identity root. |
-| **Product** | **PERSISTENT ENTITY** | Product Aggregate | Core commercial catalog entity. Possesses unique SKU, slug, pricing, stock state, and public lifecycle. |
+| **User** | **PERSISTENT ENTITY** | User Aggregate | Independent lifecycle. Represents customers, business owners, and staff accounts. Authoritative identity root. Contains **NO address columns** (address is entered at checkout and snapshotted on Order). |
+| **Product** | **PERSISTENT ENTITY** | Product Aggregate | Core commercial catalog entity. Possesses unique SKU, slug, pricing, stock state (`is_in_stock`), and public lifecycle. |
 | **EquipmentProduct** | **PERSISTENT SUB-ENTITY** | Product Aggregate | Not a distinct table root. It is the equipment-specific extension of `Product`, carrying mechanical and electrical attributes. Lifecycle is 1:1 with `Product`. |
 | **IngredientProduct** | **PERSISTENT SUB-ENTITY** | Product Aggregate | The ingredient-specific extension of `Product`, carrying origin, terroir, roast profile, cupping scores, and packaging specs. Lifecycle is 1:1 with `Product`. |
-| **Category** | **CONFIGURATION / REF DATA** | Catalog Taxonomy | Manages the 13 hierarchical category slugs identified in Phase 0. Needs persistence so admin/staff can maintain catalog taxonomy without code changes. |
-| **Brand** | **CONFIGURATION / REF DATA** | Catalog Taxonomy | 23 distinct commercial brands identified. Must be authoritative reference data to ensure consistent filtering, search indexing, and typographic presentation. |
-| **Order** | **PERSISTENT ENTITY** | Order Aggregate | Transactional aggregate root representing purchase agreements and quote requests. Must remain permanently immutable once confirmed. |
-| **OrderItem** | **PERSISTENT SUB-ENTITY** | Order Aggregate | Child record of `Order`. Snapshots commercial facts (name, SKU, unit price, applied configuration) at the exact moment of checkout. |
+| **Category** | **CONFIGURATION / REF DATA** | Catalog Taxonomy | Manages the 13 hierarchical category slugs identified in Phase 0. Authoritative owner of `domain`. Needs persistence so admin/staff can maintain catalog taxonomy without code changes. |
+| **Brand** | **CONFIGURATION / REF DATA** | Catalog Taxonomy | 23 distinct commercial brands identified. Catalog reference data only. Must NOT be expanded into a supplier/procurement domain. |
+| **Order** | **PERSISTENT ENTITY** | Order Aggregate | Transactional aggregate root. Owns `order_code`, `total_amount` (authoritative financial snapshot), and immutable shipping address snapshot. Permanently immutable once confirmed. |
+| **OrderItem** | **PERSISTENT SUB-ENTITY** | Order Aggregate | Child record of `Order`. Snapshots commercial facts (name, SKU, unit price, quantity, specs) at the exact moment of checkout. |
 | **Cart** | **TRANSIENT / UI MODEL** | Session / Client State | Stored client-side in `localStorage` (`aura_coffee_cart`). Does not require server-side database tables unless authenticated persistent cart sync across devices is requested. |
 | **CartItem** | **TRANSIENT DTO** | Session / Client State | Staging line item for the cart drawer. Converted into an immutable `OrderItem` upon checkout submission. |
-| **NewsArticle** | **PERSISTENT ENTITY** | Content Aggregate | Standalone editorial content publishing root. Has dedicated SEO slug, cover media, publishing date, and view routes. |
-| **Author** | **VALUE OBJECT** | Content Aggregate | Currently embedded `{ name, role, avatar }` in `NewsArticle`. Does not have its own lifecycle or administrative login in code; functions as an author attribution value object. |
-| **Tag** | **VALUE OBJECT / REF DATA** | Content Aggregate | String tags attached to news articles. Can be persisted as normalized tag strings or array value objects. |
+| **NewsArticle** | **PERSISTENT ENTITY** | Content Aggregate | Standalone editorial content publishing root. Has dedicated SEO slug, cover media, publishing date, canonical category slug, embedded author, and native array tags. |
+| **Author** | **EMBEDDED VALUE OBJECT** | Content Aggregate | Embedded `{ name, role, avatar }` on `NewsArticle`. Authors are editorial staff bylines, NOT platform user accounts. No separate table or FK to `User`. |
+| **Tag** | **VALUE OBJECT (ARRAY/JSON)** | Content Aggregate | String tags attached to news articles. Persisted as native array or JSON column on `NewsArticle`. No separate junction table. |
 | **ContactInquiry** | **PERSISTENT ENTITY** | Consultation / CRM | Captures B2B project advisory requests, shop opening consultations, and custom budget leads from `ContactForm.tsx`. Independent lead lifecycle. |
 | **EquipmentTier** | **NOT NEEDED IN DATABASE** | N/A (Deprecated UI) | Legacy mock object in `EquipmentConfigurator.tsx`. Represents 3 mock machines on the homepage. Must be replaced by querying actual `Product` records (`domain: 'equipment'`). |
 | **CoffeeBean** | **NOT NEEDED IN DATABASE** | N/A (Deprecated UI) | Legacy mock object in `BeansSelection.tsx`. Represents 4 mock beans on the homepage. Must be replaced by querying actual `Product` records (`domain: 'ingredients'`). |
@@ -270,18 +270,18 @@ An e-commerce order is a **legally binding historical contract**. If a product's
   1. `inStock: boolean` (a binary boolean flag).
   2. `leadTime: string` (procurement advisory text such as *"Sẵn hàng tại kho HCM & Hà Nội"*, *"Đặt hàng tùy biến 3–4 tuần"*, *"Rang mới mỗi thứ Ba & thứ Sáu"*).
 
-### 2. Conceptual Inventory Architecture
-To prevent over-engineering while remaining true to the codebase:
+### 2. Conceptual Inventory Architecture (Aligned with Review Gate)
+To prevent over-engineering while remaining strictly true to the audited codebase:
 1. **Product Availability State (Authoritative):**
-   * Modeled as an availability status:
-     * `IN_STOCK` (Ready to ship / available at showroom)
-     * `MADE_TO_ORDER` (Custom build, 3–4 weeks lead time)
-     * `ROAST_ON_DEMAND` (Roasted weekly on schedule)
-     * `OUT_OF_STOCK` (Currently unavailable)
-2. **Procurement Lead Time Notice:**
-   * A dedicated string field `lead_time_notice` communicating logistics context to B2B buyers.
+   * Exactly ONE authoritative boolean column on `Product`:
+     * `is_in_stock: boolean` (true = in stock / purchasable, false = out of stock).
+     * Directly governs "Add to Cart" enablement, quick spec actions, and Schema.org `https://schema.org/InStock` vs `OutOfStock`.
+   * **`availability_status` enum is ELIMINATED entirely** to eliminate dual-source-of-truth split brain.
+2. **Procurement Lead Time Notice (Informational Only):**
+   * A dedicated nullable string field `lead_time_notice: string | null` communicating logistics context to buyers (e.g. *"Sẵn hàng tại kho HCM & Hà Nội"*, *"Đặt hàng tùy biến 3–4 tuần"*).
+   * Does NOT govern availability or cart addition (e.g., custom machines with 3–4 weeks lead time remain `is_in_stock = true`).
 3. **Quantitative Stock Tracking (Unresolved Business Decision):**
-   * *Status:* **Deferred.** The business currently operates on an offline confirmation model. Stock reservation cannot happen automatically without a warehouse inventory management system.
+   * *Status:* **Deferred.** The business operates on an offline confirmation model. Stock reservation cannot happen automatically without an integrated warehouse inventory management system.
 
 ---
 
@@ -418,18 +418,23 @@ To eliminate data duplication and split-brain states, exactly ONE authoritative 
 
 | Business Fact | Authoritative Owner | Non-Authoritative / Derived Places (Must NOT Persist Independently) |
 |---|---|---|
-| **Active Catalog Price** | `Product.price` | `formattedPrice` (Derived UI string), `EquipmentTier.price`, `CoffeeBean.price`. |
-| **Historical Purchase Price** | `OrderItem.snapshotted_unit_price` | The current `Product.price` must NOT be consulted for past order totals. |
+| **Active Catalog Price** | `Product.price` (Integer VND) | `formattedPrice` (Derived UI string), `EquipmentTier.price`, `CoffeeBean.price`. |
+| **Historical Purchase Price** | `OrderItem.snapshotted_unit_price` | Live `Product.price` must never be queried for historical orders. |
 | **Product Display Name** | `Product.name` | `CartItem.title` (Transient copy), `EquipmentTier.name`, `CoffeeBean.name`. |
 | **Historical Purchased Name** | `OrderItem.snapshotted_title` | Preserves the name of the product at purchase date. |
-| **Brand Identity** | `Brand.name` | Flat strings repeated across product rows must reference `Brand.id`. |
-| **Category Classification** | `Category.name` / `slug` | Hardcoded string enums in product objects must reference `Category.id`. |
-| **Product Availability** | `Product.in_stock` / `availability_status` | Cannot exist separately in warehouse or UI without synchronization. |
-| **Order Total** | `Order.total_amount` | Must equal `SUM(OrderItem.snapshotted_unit_price * OrderItem.quantity)`. Authoritative on `Order`. |
-| **Customer Profile Address** | `User.address` (Default Profile) | Optional saved shipping address on user account. |
-| **Fulfillment Address** | `Order.shipping_address` | The specific destination address snapshotted on the order record. |
+| **Product Availability** | `Product.is_in_stock` (Boolean) | `availability_status` (Eliminated), `lead_time_notice` (Informational text only). |
+| **Procurement Notice** | `Product.lead_time_notice` (Nullable Text) | Must not dictate in-stock status or checkout blocking. |
+| **Brand Taxonomy** | `Brand.name` & `slug` | Plain string brand names; must not be expanded into supplier entities. |
+| **Category Taxonomy** | `Category.name` & `slug` | Category is the authoritative owner of `domain`. Parity enforced by schema. |
+| **Order Total** | `Order.total_amount` (Integer VND) | Authoritative immutable financial snapshot. Must not be dynamically re-derived on historical records. |
+| **Order Shipping Info** | `Order.shipping_*` (Snapshotted columns) | `User` profile (Zero address columns on User). |
 | **Payment Verification State**| `Order.status` | State transitions from `pending_verification` to `confirmed` owned solely by Order. |
-| **VietQR Payment Syntax** | `Order.payment_reference` | Constructed deterministically from `Order.order_id` and customer phone. |
+| **Order Identifier** | `Order.order_code` | Authoritative transaction identifier (e.g. `AURA-719245`). |
+| **VietQR Payment Reference** | Derived from `order_code` + phone | Constructed deterministically at runtime; not an independent mutable column. |
+| **Article Author** | `NewsArticle.author_*` (Embedded columns) | No `authors` table; authors are editorial bylines, not platform user accounts. |
+| **Article Tags** | `NewsArticle.tags` (Native Array / JSONB) | No `tags` table; no `news_article_tags` junction table. |
+| **Article Read Time** | Computed dynamically at runtime | No `read_time` database column. |
+| **Article Category Label**| Derived from `Category` code/slug | No `category_label` database column. |
 
 ### Identified Duplication Risks & Remediation
 

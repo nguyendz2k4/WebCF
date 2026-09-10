@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useApp } from '@/stores/AppContext';
+import { useRouter } from 'next/navigation';
 
 const EQUIPMENT_TIERS = [
   {
@@ -61,37 +61,12 @@ const TABS: { key: 'home' | 'medium' | 'chain'; label: string }[] = [
 
 export const EquipmentConfigurator: React.FC = () => {
   const [selectedKey, setSelectedKey] = useState<'home' | 'medium' | 'chain'>('home');
-  const { addToCart, buyNow } = useApp();
+  const router = useRouter();
 
   const tier = EQUIPMENT_TIERS.find((t) => t.tabKey === selectedKey) || EQUIPMENT_TIERS[0];
 
-  const handleAddToCart = () => {
-    addToCart({
-      id: tier.id,
-      title: tier.name,
-      category: 'equipment',
-      price: tier.price,
-      formattedPrice: tier.formattedPrice,
-      image: tier.image,
-      subtitle: tier.label,
-      specs: `${tier.capacity} · ${tier.pressure}`,
-      quantity: 1,
-    });
-  };
-
-  const handleBuyNow = () => {
-    buyNow({
-      id: tier.id,
-      title: tier.name,
-      category: 'equipment',
-      price: tier.price,
-      formattedPrice: tier.formattedPrice,
-      image: tier.image,
-      subtitle: tier.label,
-      specs: `${tier.capacity} · ${tier.pressure}`,
-      quantity: 1,
-    });
-  };
+  const handleAddToCart = () => router.push('/products?domain=equipment');
+  const handleBuyNow = () => router.push('/contact');
 
   return (
     <section
@@ -337,7 +312,7 @@ export const EquipmentConfigurator: React.FC = () => {
             ))}
           </div>
 
-          {/* Action Row: Thêm vào Giỏ Hàng + Mua Ngay */}
+          {/* Action Row: Thêm vào Giỏ Hàng + Liên Hệ Tư Vấn */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
             <button
               id="equipment-add-btn"
@@ -364,7 +339,7 @@ export const EquipmentConfigurator: React.FC = () => {
                 (e.currentTarget as HTMLButtonElement).style.color = 'var(--espresso-ink)';
               }}
             >
-              + Thêm vào Giỏ Hàng
+              Xem Thiết Bị Đang Bán
             </button>
 
             <button

@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useCallback, useTransition } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Product, ProductDomain, CatalogFilterState, CatalogSortOption } from '@/types/product';
-import { PRODUCTS_DATA } from '@/data/products';
 import { filterProducts, sortProducts } from './catalogUtils';
 import { CatalogHeader } from './CatalogHeader';
 import { CatalogSearchBar } from './CatalogSearchBar';
@@ -19,7 +18,7 @@ import { MobileFilterDrawer } from './MobileFilterDrawer';
 
 const ITEMS_PER_PAGE = 12;
 
-export const CatalogClientView: React.FC = () => {
+export const CatalogClientView: React.FC<{ products: Product[] }> = ({ products }) => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -116,11 +115,13 @@ export const CatalogClientView: React.FC = () => {
       const qs = params.toString();
       const targetUrl = qs ? `${pathname}?${qs}` : pathname;
 
+      if (params.toString() === searchParams.toString()) return;
+
       startTransition(() => {
         router.replace(targetUrl, { scroll: false });
       });
     },
-    [filters, pathname, router]
+    [filters, pathname, router, searchParams]
   );
 
   // Domain Switch Handler
@@ -150,9 +151,9 @@ export const CatalogClientView: React.FC = () => {
   };
 
   // Search query change
-  const handleSearchChange = (searchQuery: string) => {
+  const handleSearchChange = useCallback((searchQuery: string) => {
     updateUrl({ searchQuery });
-  };
+  }, [updateUrl]);
 
   // Sort change
   const handleSortChange = (sort: CatalogSortOption) => {
@@ -225,12 +226,12 @@ export const CatalogClientView: React.FC = () => {
     if (filters.minCupping !== undefined) count++;
     if (filters.searchQuery) count++;
     return count;
-  }, [filters]);
+  }, [filters, products]);
 
   // Filtered and Sorted Products
   const filteredProducts = useMemo(() => {
-    return filterProducts(PRODUCTS_DATA, filters);
-  }, [filters]);
+    return filterProducts(products, filters);
+  }, [filters, products]);
 
   const sortedProducts = useMemo(() => {
     return sortProducts(filteredProducts, filters.sort);
@@ -246,8 +247,8 @@ export const CatalogClientView: React.FC = () => {
 
   // Featured flagship recommendations for empty recovery
   const featuredFlagships = useMemo(() => {
-    return PRODUCTS_DATA.filter((p) => p.domain === filters.domain && p.isFeatured);
-  }, [filters.domain]);
+    return products.filter((p) => p.domain === filters.domain && p.isFeatured);
+  }, [filters.domain, products]);
 
   return (
     <section className="min-h-screen bg-[var(--cream-base)]">
@@ -265,7 +266,7 @@ export const CatalogClientView: React.FC = () => {
             value={filters.searchQuery || ''}
             onChange={handleSearchChange}
             domain={filters.domain}
-            products={PRODUCTS_DATA.filter((p) => p.domain === filters.domain)}
+            products={products.filter((p) => p.domain === filters.domain)}
             onSelectCategory={handleCategoryChange}
             onOpenQuickSpec={handleOpenQuickSpec}
           />
@@ -277,7 +278,7 @@ export const CatalogClientView: React.FC = () => {
         domain={filters.domain}
         activeCategory={filters.category || 'all'}
         onSelectCategory={handleCategoryChange}
-        allProducts={PRODUCTS_DATA}
+        allProducts={products}
       />
 
       {/* 4. Main Catalog Content Area (Left Editorial Rail + Product Grid) */}
@@ -289,7 +290,7 @@ export const CatalogClientView: React.FC = () => {
               filters={filters}
               onFilterChange={(updates) => updateUrl(updates)}
               onResetAll={handleResetAll}
-              allProducts={PRODUCTS_DATA}
+              allProducts={products}
             />
           </div>
 
@@ -358,7 +359,7 @@ export const CatalogClientView: React.FC = () => {
         filters={filters}
         onFilterChange={(updates) => updateUrl(updates)}
         onResetAll={handleResetAll}
-        allProducts={PRODUCTS_DATA}
+        allProducts={products}
         matchingCount={filteredProducts.length}
       />
     </section>

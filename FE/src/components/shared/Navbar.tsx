@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useApp } from '@/stores/AppContext';
 import { ShoppingBag, User as UserIcon, Menu, X, LogOut, ChevronDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 const NAV_LINKS = [
-  { name: 'Trang Chủ', href: '/#pillars' },
+  { name: 'Trang Chủ', href: '/' },
   { name: 'Sản Phẩm', href: '/products?domain=equipment' },
   { name: 'Nguyên Liệu', href: '/products?domain=ingredients' },
   { name: 'Tin Tức', href: '/news' },
@@ -48,7 +48,6 @@ export const Navbar: React.FC = () => {
   } = useApp();
 
   const pathname = usePathname();
-  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userDropOpen, setUserDropOpen] = useState(false);
@@ -301,7 +300,7 @@ export const Navbar: React.FC = () => {
                           {user.name}
                         </p>
                         <p style={{ fontSize: '11px', color: 'var(--espresso-light)', margin: 0 }}>
-                          {user.role === 'owner' ? 'Chủ Quán' : 'Barista'}
+                          Khách hàng
                         </p>
                       </div>
                       <button

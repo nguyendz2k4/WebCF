@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { apiRequest, errorMessage } from '@/lib/api-client';
 import { useApp } from '@/stores/AppContext';
 import { CheckCircle2, Loader2, Send, AlertCircle } from 'lucide-react';
 
@@ -50,6 +51,9 @@ export const ContactForm: React.FC = () => {
     message: '',
   });
 
+  const [submitError, setSubmitError] = useState('');
+  const submitLock = useRef(false);
+  const requestKey = useRef('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -64,7 +68,7 @@ export const ContactForm: React.FC = () => {
     if (!formData.phone.trim()) {
       newErrors.phone = 'Vui lòng cung cấp số điện thoại liên hệ.';
     } else {
-      const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/;
+      const phoneRegex = /^(?:\+?84|0)[35789][0-9]{8}$/;
       if (!phoneRegex.test(formData.phone.replace(/\s+/g, ''))) {
         newErrors.phone = 'Số điện thoại không hợp lệ (ví dụ: 0909 000 247).';
       }
@@ -91,6 +95,8 @@ export const ContactForm: React.FC = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
+    requestKey.current = '';
+    setSubmitError('');
     setFormData((prev) => ({ ...prev, [name]: value }));
 
     if (errors[name as keyof FormErrors]) {
@@ -101,6 +107,7 @@ export const ContactForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (submitLock.current) return;
     if (!validate()) {
       const firstErrorKey = Object.keys(errors)[0];
       if (firstErrorKey) {
@@ -112,22 +119,19 @@ export const ContactForm: React.FC = () => {
       return;
     }
 
-    setIsSubmitting(true);
+    submitLock.current = true; setIsSubmitting(true); setSubmitError('');
+    if (!requestKey.current) requestKey.current = crypto.randomUUID();
+    try {
+      await apiRequest('/contacts', { method: 'POST', body: formData, idempotencyKey: requestKey.current });
+      setIsSubmitted(true);
+      addToast('Đã gửi yêu cầu', 'Thông tin tư vấn đã được tiếp nhận.', 'success');
+    } catch (error) { setSubmitError(errorMessage(error)); }
+    finally { submitLock.current = false; setIsSubmitting(false); }
 
-    // Simulate API request submission
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    setIsSubmitting(false);
-    setIsSubmitted(true);
-
-    addToast(
-      'Gửi Yêu Cầu Thành Công',
-      'Chuyên viên tư vấn Aura Coffee sẽ liên hệ lại với bạn trong vòng 2 giờ.',
-      'success'
-    );
   };
 
   const handleReset = () => {
+    requestKey.current = ''; setSubmitError('');
     setFormData({
       fullName: '',
       phone: '',
@@ -411,6 +415,7 @@ export const ContactForm: React.FC = () => {
             id="message"
             name="message"
             rows={4}
+            maxLength={5000}
             value={formData.message}
             onChange={handleChange}
             placeholder="Chia sẻ thêm về mặt bằng, công suất dự kiến phục vụ (ly/ngày) hoặc thời gian khai trương mong muốn..."
@@ -419,6 +424,7 @@ export const ContactForm: React.FC = () => {
         </div>
       </div>
 
+      {submitError && <p role="alert" className="text-red-700">{submitError}</p>}
       {/* ── Submit Action Button ── */}
       <div className="pt-2">
         <button
@@ -439,7 +445,7 @@ export const ContactForm: React.FC = () => {
           )}
         </button>
         <p className="text-[12px] font-sans text-[var(--espresso-light)] mt-2">
-          Thông tin của bạn được cam kết bảo mật tuyệt đối phục vụ mục đích tư vấn kỹ thuật dự án.
+          Thông tin của bạn được sử dụng để tiếp nhận và xử lý yêu cầu tư vấn.
         </p>
       </div>
     </form>

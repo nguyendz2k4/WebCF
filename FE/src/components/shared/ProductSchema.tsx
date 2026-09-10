@@ -1,13 +1,15 @@
 import React from 'react';
+import { serializeJsonLd } from '@/lib/security';
 import { Product } from '@/types/product';
 import { EQUIPMENT_CATEGORIES, INGREDIENT_CATEGORIES } from '@/components/catalog/catalogUtils';
 
 interface ProductSchemaProps {
   product: Product;
   siteUrl: string;
+  nonce: string;
 }
 
-export const ProductSchema: React.FC<ProductSchemaProps> = ({ product, siteUrl }) => {
+export const ProductSchema: React.FC<ProductSchemaProps> = ({ product, siteUrl, nonce }) => {
   const isEquipment = product.domain === 'equipment';
   const domainLabel = isEquipment ? 'Thiết Bị Cà Phê' : 'Nguyên Liệu Pha Chế';
   const domainUrl = `${siteUrl}/products?domain=${product.domain}`;
@@ -81,11 +83,13 @@ export const ProductSchema: React.FC<ProductSchemaProps> = ({ product, siteUrl }
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        nonce={nonce}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(productJsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        nonce={nonce}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd) }}
       />
     </>
   );

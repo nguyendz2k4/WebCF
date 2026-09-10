@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { CoffeeBean } from '@/types';
-import { useApp } from '@/stores/AppContext';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 
@@ -78,22 +78,10 @@ const COFFEE_BEANS: CoffeeBean[] = [
 ];
 
 export const BeansSelection: React.FC = () => {
-  const { addToCart, addToast } = useApp();
+  const router = useRouter();
   const [activeBeanId, setActiveBeanId] = useState<string>(COFFEE_BEANS[0].id);
 
-  const handleAddBean = (bean: CoffeeBean) => {
-    addToCart({
-      id: bean.id,
-      title: bean.name,
-      category: 'beans',
-      price: bean.price,
-      formattedPrice: bean.formattedPrice,
-      image: bean.image,
-      subtitle: `${bean.origin} (${bean.bagWeight})`,
-      specs: `SCA ${bean.cuppingScore} · ${bean.roastProfile} Roast`,
-    });
-    addToast('Đã thêm vào hồ sơ', `${bean.name} đã được thêm vào hồ sơ báo giá.`, 'success');
-  };
+  const handleAddBean = (_bean: CoffeeBean) => router.push('/products?domain=ingredients&category=coffee-beans');
 
   return (
     <section
@@ -249,7 +237,7 @@ export const BeansSelection: React.FC = () => {
                     e.stopPropagation();
                     handleAddBean(bean);
                   }}
-                  aria-label={`Thêm ${bean.name} vào giỏ hàng`}
+                  aria-label="Xem danh mục hạt cà phê"
                   style={{
                     fontFamily: 'var(--font-sans)',
                     fontSize: '12px',
@@ -271,7 +259,7 @@ export const BeansSelection: React.FC = () => {
                     (e.currentTarget as HTMLButtonElement).style.borderBottomColor = 'transparent';
                   }}
                 >
-                  Thêm vào Giỏ Hàng
+                  Xem Hạt Cà Phê Đang Bán
                 </button>
               </motion.div>
             );

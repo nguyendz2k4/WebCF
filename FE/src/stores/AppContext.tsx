@@ -1,13 +1,17 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { User, CartItem, ToastNotification } from '@/types';
+import { apiRequest, ApiError, errorMessage } from '@/lib/api-client';
+import { parseSession, parseCart, type Credentials, type Registration } from '@/lib/contracts';
 
 interface AppContextType {
   // Auth state
   user: User | null;
   isLoggedIn: boolean;
-  login: (userData: Partial<User>) => void;
+  login: (credentials: Credentials) => Promise<void>;
+  register: (details: Registration) => Promise<void>;
+  authLoading: boolean;
   logout: () => void;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
@@ -16,6 +20,10 @@ interface AppContextType {
 
   // Cart state
   cart: CartItem[];
+  cartLoading: boolean;
+  cartError: string;
+  refreshCart: () => Promise<void>;
+  checkoutFromCart: boolean;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
   addToCart: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
@@ -41,30 +49,18 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const DEMO_USERS: Record<string, User> = {
-  owner: {
-    id: 'usr_owner_01',
-    name: 'Nguyễn Đăng Quang',
-    email: 'quang.nguyen@auracoffee.vn',
-    phone: '0909 000 247',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    role: 'owner',
-    shopName: 'Aura Specialty Coffee Lab',
-  },
-  barista: {
-    id: 'usr_barista_02',
-    name: 'Lê Minh Tuấn (Head Barista)',
-    email: 'tuan.barista@auracoffee.vn',
-    phone: '0912 345 678',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    role: 'barista',
-    shopName: 'The Workshop Coffee',
-  },
-};
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Auth state
   const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [cartLoading, setCartLoading] = useState(true);
+  const [cartError, setCartError] = useState('');
+  const [checkoutFromCart, setCheckoutFromCart] = useState(false);
+  const cartLock = useRef(false);
+  const authLock = useRef(false);
+  const cartGeneration = useRef(0);
+  const authGeneration = useRef(0);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
 
@@ -79,43 +75,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Toast state
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
-  // Initial local storage hydration
   useEffect(() => {
-    try {
-      const savedUser = localStorage.getItem('aura_coffee_user');
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
+    const controller = new AbortController();
+    const generation = authGeneration.current;
+    apiRequest('/auth/me', { signal: controller.signal }).then(value => {
+      if (!controller.signal.aborted && generation === authGeneration.current) setUser(parseSession(value).user);
+    }).catch(error => {
+      if (!controller.signal.aborted && !(error instanceof ApiError && error.status === 401)) {
+        addToast('Chưa thể kiểm tra tài khoản', errorMessage(error));
       }
-      const savedCart = localStorage.getItem('aura_coffee_cart');
-      if (savedCart) {
-        setCart(JSON.parse(savedCart));
-      }
-    } catch (e) {
-      console.error('Error hydrating localStorage', e);
-    }
+    }).finally(() => { if (!controller.signal.aborted && generation === authGeneration.current) setAuthLoading(false); });
+    void refreshCart();
+    const expired = () => {
+      authGeneration.current++; cartGeneration.current++;
+      setUser(null); setCart([]); setCheckoutItems([]); setIsCheckoutOpen(false);
+      setCartError('Phiên đã hết hạn. Vui lòng đăng nhập và tải lại giỏ hàng.');
+    };
+    const resume = () => { if (document.visibilityState === 'visible') {
+      const generation = authGeneration.current;
+      apiRequest('/auth/me').then(value => { if (generation === authGeneration.current) setUser(parseSession(value).user); }).catch(error => {
+        if (generation === authGeneration.current && error instanceof ApiError && error.status === 401) expired();
+      });
+    } };
+    window.addEventListener('aura:session-expired', expired);
+    document.addEventListener('visibilitychange', resume);
+    return () => { controller.abort(); cartGeneration.current++; window.removeEventListener('aura:session-expired', expired); document.removeEventListener('visibilitychange', resume); };
   }, []);
-
-  // Save Cart to LocalStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('aura_coffee_cart', JSON.stringify(cart));
-    } catch (e) {
-      console.error('Error saving cart to localStorage', e);
-    }
-  }, [cart]);
-
-  // Save User to LocalStorage
-  useEffect(() => {
-    try {
-      if (user) {
-        localStorage.setItem('aura_coffee_user', JSON.stringify(user));
-      } else {
-        localStorage.removeItem('aura_coffee_user');
-      }
-    } catch (e) {
-      console.error('Error saving user to localStorage', e);
-    }
-  }, [user]);
 
   // Toast Helper
   const addToast = (title: string, message: string, type: 'success' | 'info' | 'cart' = 'info') => {
@@ -131,72 +116,72 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Auth methods
-  const login = (userData: Partial<User>) => {
-    const fullUser: User = {
-      id: userData.id || `usr_${Date.now()}`,
-      name: userData.name || 'Quý Khách Hàng',
-      email: userData.email || 'guest@customer.vn',
-      phone: userData.phone || '0909 000 247',
-      avatar: userData.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-      role: userData.role || 'guest',
-      shopName: userData.shopName || 'Quán Cà Phê Mới',
-    };
-    setUser(fullUser);
-    setIsAuthModalOpen(false);
-    addToast('Đăng nhập thành công', `Chào mừng ${fullUser.name} đã quay trở lại Aura Coffee!`, 'success');
+  // Identity is always obtained from the server; the browser never chooses its role.
+  const login = async (credentials: Credentials) => {
+    if (authLock.current) throw new ApiError(409);
+    authLock.current = true; authGeneration.current++; setAuthLoading(true);
+    try {
+      await apiRequest('/auth/login', { method: 'POST', body: credentials });
+      const session = parseSession(await apiRequest('/auth/me'));
+      setUser(session.user); setIsAuthModalOpen(false);
+      await refreshCart();
+      addToast('Đăng nhập thành công', 'Chào mừng ' + session.user.name + ' quay trở lại.', 'success');
+    } finally { authLock.current = false; setAuthLoading(false); }
   };
-
-  const logout = () => {
-    setUser(null);
-    addToast('Đã đăng xuất', 'Bạn đã đăng xuất an toàn khỏi tài khoản.', 'info');
+  const register = async (details: Registration) => {
+    await apiRequest('/auth/register', { method: 'POST', body: details });
+    setAuthModalMode('login');
+    addToast('Đã tạo tài khoản', 'Vui lòng kiểm tra email xác minh trước khi đăng nhập.', 'success');
   };
-
-  // Cart methods
-  const addToCart = (newItem: Omit<CartItem, 'quantity'> & { quantity?: number }) => {
-    const qty = newItem.quantity || 1;
-    setCart((prevCart) => {
-      const existingIndex = prevCart.findIndex((item) => item.id === newItem.id);
-      if (existingIndex > -1) {
-        const updated = [...prevCart];
-        updated[existingIndex].quantity += qty;
-        return updated;
-      } else {
-        return [...prevCart, { ...newItem, quantity: qty }];
-      }
-    });
-
-    addToast(
-      'Đã thêm vào giỏ hàng',
-      `${newItem.title} (${qty > 1 ? qty + 'x' : '1 sản phẩm'})`,
-      'cart'
-    );
+  const logout = async () => {
+    if (authLock.current) return;
+    authLock.current = true; authGeneration.current++;
+    try {
+      await apiRequest('/auth/logout', { method: 'POST' });
+      cartGeneration.current++; setUser(null); setCart([]); setCheckoutItems([]); setIsCheckoutOpen(false); setIsCartOpen(false);
+      addToast('Đã đăng xuất', 'Phiên đăng nhập đã kết thúc.', 'info');
+    } catch (error) { addToast('Chưa thể đăng xuất', errorMessage(error)); }
+    finally { authLock.current = false; }
   };
-
-  const removeFromCart = (id: string) => {
-    const removedItem = cart.find((i) => i.id === id);
-    setCart((prev) => prev.filter((item) => item.id !== id));
-    if (removedItem) {
-      addToast('Đã xóa khỏi giỏ', `${removedItem.title} đã được loại bỏ.`, 'info');
-    }
+  async function refreshCart() {
+    const generation = ++cartGeneration.current;
+    setCartLoading(true);
+    try {
+      const items = parseCart(await apiRequest('/cart'));
+      if (generation === cartGeneration.current) { setCart(items); setCartError(''); }
+    } catch (error) { if (generation === cartGeneration.current) { setCart([]); setCartError(errorMessage(error)); } }
+    finally { if (generation === cartGeneration.current) setCartLoading(false); }
+  }
+  async function mutateCart(path: string, method: 'POST' | 'PUT' | 'DELETE', body?: unknown) {
+    if (cartLock.current) return;
+    cartLock.current = true; const generation = ++cartGeneration.current;
+    setCartLoading(true);
+    try {
+      const items = parseCart(await apiRequest(path, { method, body }));
+      if (generation === cartGeneration.current) { setCart(items); setCartError(''); }
+    } catch (error) {
+      if (generation === cartGeneration.current) setCartError(errorMessage(error));
+      addToast('Chưa thể cập nhật giỏ hàng', errorMessage(error));
+    } finally { cartLock.current = false; if (generation === cartGeneration.current) setCartLoading(false); }
+  }
+  const addToCart = async (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => {
+    const quantity = item.quantity ?? 1;
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 999) return;
+    setIsCartOpen(true);
+    // Prices, names and availability are resolved by BE from the product ID.
+    await mutateCart('/cart/items', 'POST', { productId: item.id, quantity });
   };
-
+  const removeFromCart = (id: string) => { void mutateCart('/cart/items/' + encodeURIComponent(id), 'DELETE'); };
   const updateQuantity = (id: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeFromCart(id);
-      return;
-    }
-    setCart((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, quantity } : item))
-    );
+    if (quantity === 0) { removeFromCart(id); return; }
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 999) return;
+    void mutateCart('/cart/items/' + encodeURIComponent(id), 'PUT', { quantity });
   };
-
-  const clearCart = () => {
-    setCart([]);
-  };
+  const clearCart = () => { void mutateCart('/cart', 'DELETE'); };
 
   // Checkout / Buy Now methods
   const openCheckout = (items?: CartItem[] | CartItem) => {
+    if (authLoading) { addToast('Đang kiểm tra tài khoản', 'Vui lòng chờ kiểm tra phiên đăng nhập hoàn tất.'); return; }
     if (!user) {
       setAuthModalMode('login');
       setIsAuthModalOpen(true);
@@ -204,6 +189,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return;
     }
 
+    if (!items && (cartLoading || cartError || !cart.length)) { addToast('Chưa thể đặt hàng', 'Vui lòng tải lại giỏ hàng trước khi tiếp tục.'); return; }
+    setCheckoutFromCart(!items);
     if (items) {
       const itemList = Array.isArray(items) ? items : [items];
       setCheckoutItems(itemList);
@@ -215,6 +202,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const buyNow = (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => {
+    if (authLoading) { addToast('Đang kiểm tra tài khoản', 'Vui lòng chờ kiểm tra phiên đăng nhập hoàn tất.'); return; }
     const directItem: CartItem = {
       ...item,
       quantity: item.quantity || 1,
@@ -227,6 +215,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return;
     }
 
+    setCheckoutFromCart(false);
     setCheckoutItems([directItem]);
     setIsCartOpen(false);
     setIsCheckoutOpen(true);
@@ -246,12 +235,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         user,
         isLoggedIn: !!user,
         login,
+        register,
+        authLoading,
         logout,
         isAuthModalOpen,
         setIsAuthModalOpen,
         authModalMode,
         setAuthModalMode,
         cart,
+        cartLoading,
+        cartError,
+        refreshCart,
+        checkoutFromCart,
         isCartOpen,
         setIsCartOpen,
         addToCart,
@@ -283,5 +278,3 @@ export const useApp = () => {
   }
   return context;
 };
-
-export { DEMO_USERS };

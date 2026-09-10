@@ -8,6 +8,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 export const CartDrawer: React.FC = () => {
   const {
     cart,
+    cartLoading,
+    cartError,
+    refreshCart,
     isCartOpen,
     setIsCartOpen,
     removeFromCart,
@@ -19,7 +22,7 @@ export const CartDrawer: React.FC = () => {
   if (!isCartOpen) return null;
 
   const handleProceedCheckout = () => {
-    openCheckout(cart);
+    openCheckout();
   };
 
   return (
@@ -142,7 +145,9 @@ export const CartDrawer: React.FC = () => {
               data-lenis-prevent-touch
               style={{ flex: 1, overflowY: 'auto', padding: '24px', overscrollBehavior: 'contain' }}
             >
-              {cart.length === 0 ? (
+              {cartError && <div role="alert"><p>{cartError}</p><button type="button" disabled={cartLoading} onClick={() => void refreshCart()}>Thử lại</button></div>}
+              {cartLoading && <p role="status">Đang cập nhật giỏ hàng…</p>}
+              {!cartLoading && !cartError && cart.length === 0 ? (
                 <div
                   style={{
                     height: '100%',
@@ -253,7 +258,8 @@ export const CartDrawer: React.FC = () => {
                           {/* Quantity stepper */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                             <button
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              disabled={cartLoading}
+                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
                               style={{
                                 background: 'none',
                                 border: 'none',
@@ -305,7 +311,8 @@ export const CartDrawer: React.FC = () => {
                           }}
                         >
                           <button
-                            onClick={() => removeFromCart(item.id)}
+                            disabled={cartLoading}
+                              onClick={() => removeFromCart(item.id)}
                             aria-label={`Xóa ${item.title}`}
                             style={{
                               background: 'none',
@@ -379,6 +386,7 @@ export const CartDrawer: React.FC = () => {
 
                 <button
                   type="button"
+                  disabled={cartLoading || !!cartError}
                   onClick={handleProceedCheckout}
                   style={{
                     width: '100%',

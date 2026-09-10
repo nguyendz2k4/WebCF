@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { apiRequest, errorMessage } from '@/lib/api-client';
 
 const NAV_LINKS = [
   { name: 'Giải Pháp', href: '/#pillars' },
@@ -15,12 +16,18 @@ export const SiteFooter: React.FC = () => {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.trim()) {
-      setSubscribed(true);
-      setEmail('');
-    }
+    if (submitting || !email.trim()) return;
+    setSubmitting(true); setError('');
+    try {
+      await apiRequest('/newsletter/subscriptions', { method: 'POST', body: { email: email.trim() } });
+      setSubscribed(true); setEmail('');
+    } catch (error) { setError(errorMessage(error)); }
+    finally { setSubmitting(false); }
+
   };
 
   return (
@@ -120,6 +127,7 @@ export const SiteFooter: React.FC = () => {
           <p className="label-text" style={{ color: 'var(--espresso-light)', marginBottom: '20px' }}>
             Nhận Cập Nhật
           </p>
+          {error && <p role="alert">{error}</p>}
           {subscribed ? (
             <p
               style={{
@@ -157,6 +165,7 @@ export const SiteFooter: React.FC = () => {
               />
               <button
                 type="submit"
+                disabled={submitting}
                 id="footer-newsletter-submit"
                 aria-label="Gửi đăng ký"
                 style={{

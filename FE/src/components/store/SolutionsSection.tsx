@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { SolutionPackage } from '@/types';
-import { useApp } from '@/stores/AppContext';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
 const PACKAGES: SolutionPackage[] = [
@@ -57,21 +57,9 @@ const PACKAGES: SolutionPackage[] = [
 ];
 
 export const SolutionsSection: React.FC = () => {
-  const { addToCart, setIsCartOpen, addToast } = useApp();
+  const router = useRouter();
 
-  const handleAddPackage = (pkg: SolutionPackage) => {
-    addToCart({
-      id: pkg.id,
-      title: pkg.name,
-      category: 'package',
-      price: pkg.rawPrice,
-      formattedPrice: pkg.price,
-      image: '',
-      subtitle: pkg.target,
-      specs: pkg.description,
-    });
-    addToast('Đã thêm giải pháp', `${pkg.name} đã được đưa vào hồ sơ báo giá.`, 'success');
-  };
+  const handleAddPackage = (_pkg: SolutionPackage) => router.push('/contact');
 
   return (
     <section
@@ -248,7 +236,7 @@ export const SolutionsSection: React.FC = () => {
                   {featured ? (
                     <button
                       id={`solution-cta-${pkg.id}`}
-                      onClick={() => { handleAddPackage(pkg); setIsCartOpen(true); }}
+                      onClick={() => { handleAddPackage(pkg); }}
                       style={{
                         width: '100%',
                         fontFamily: 'var(--font-sans)',
@@ -275,7 +263,7 @@ export const SolutionsSection: React.FC = () => {
                   ) : (
                     <button
                       id={`solution-cta-${pkg.id}`}
-                      onClick={() => { handleAddPackage(pkg); setIsCartOpen(true); }}
+                      onClick={() => { handleAddPackage(pkg); }}
                       style={{
                         background: 'none',
                         border: 'none',

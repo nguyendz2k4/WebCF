@@ -9,14 +9,17 @@ export function LenisProvider({ children }: { children: React.ReactNode }) {
       duration: 1.2,
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       touchMultiplier: 2,
+      // Leave horizontal trackpad gestures to native horizontal carousels.
+      virtualScroll: ({ deltaX, deltaY }) => Math.abs(deltaY) >= Math.abs(deltaX),
     });
 
+    let id = 0;
     function raf(time: number) {
       lenis.raf(time);
-      requestAnimationFrame(raf);
+      id = requestAnimationFrame(raf);
     }
 
-    const id = requestAnimationFrame(raf);
+    id = requestAnimationFrame(raf);
 
     return () => {
       cancelAnimationFrame(id);
