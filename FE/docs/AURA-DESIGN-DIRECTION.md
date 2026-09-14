@@ -3,7 +3,7 @@
 **Version:** 1.0  
 **Status:** Approved Art Direction  
 **Source:** Grill-me interview session + codebase audit — 25/08/2026  
-**Referenced by:** `HOMEPAGE-COMPOSITION.md`, `HOMEPAGE-ARCHITECTURE-AUDIT.md`
+**Referenced by:** `HOMEPAGE-COMPOSITION.md`
 
 ---
 

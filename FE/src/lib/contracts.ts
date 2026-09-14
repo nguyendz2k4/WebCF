@@ -10,15 +10,19 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 export function parseSession(value: unknown): Session {
+  if (isRecord(value) && 'success' in value) {
+    if (value.success !== true) throw new Error('Invalid session');
+    value = value.data;
+  }
   if (!isRecord(value) || !isRecord(value.user) || typeof value.isAdmin !== 'boolean') throw new Error('Invalid session');
   const user = value.user;
   if (!['id', 'name', 'email'].every(key => typeof user[key] === 'string' && user[key].length > 0)
     || !['owner', 'barista', 'guest'].includes(String(user.role))
-    || !['phone', 'avatar', 'shopName'].every(key => user[key] === undefined || typeof user[key] === 'string')) throw new Error('Invalid user');
+    || !['phone', 'avatar', 'shopName'].every(key => user[key] == null || typeof user[key] === 'string')) throw new Error('Invalid user');
   return { isAdmin: value.isAdmin, user: {
     id: user.id as string, name: user.name as string, email: user.email as string,
-    role: user.role as User['role'], phone: user.phone as string | undefined,
-    shopName: user.shopName as string | undefined,
+    role: user.role as User['role'], phone: typeof user.phone === 'string' ? user.phone : undefined,
+    shopName: typeof user.shopName === 'string' ? user.shopName : undefined,
     avatar: typeof user.avatar === 'string' && isSafeImageUrl(user.avatar) ? user.avatar : undefined,
   } };
 }

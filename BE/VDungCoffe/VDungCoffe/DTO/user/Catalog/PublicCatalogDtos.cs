@@ -7,6 +7,8 @@ public class PublicProductResponse
     public string Id { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public List<string> SuitableFor { get; set; } = new();
     public string? Sku { get; set; }
     public string Category { get; set; } = string.Empty;
     public string CategoryName { get; set; } = string.Empty;
@@ -52,6 +54,8 @@ public class BeanSpecsDto
     public decimal? CuppingScore { get; set; }
     public List<string>? FlavorNotes { get; set; }
     public string? UnitSize { get; set; }
+    public string? CaseSize { get; set; }
+    public string? ShelfLife { get; set; }
 }
 
 public class PublicArticleResponse

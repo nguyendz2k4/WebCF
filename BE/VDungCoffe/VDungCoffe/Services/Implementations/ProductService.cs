@@ -351,13 +351,16 @@ public class ProductService : IProductService
         product.UpdatedAt = DateTime.UtcNow;
 
         // Update Media
-        if (request.Images != null)
+        if (request.Images != null && !product.ProductMedia.OrderBy(m => m.Position).Select(m => m.Url)
+            .SequenceEqual(request.Images.Where(u => !string.IsNullOrWhiteSpace(u)).Select(u => u.Trim())))
         {
             _context.ProductMedia.RemoveRange(product.ProductMedia);
+            product.ProductMedia.Clear();
             int pos = 0;
             foreach (var imgUrl in request.Images.Where(u => !string.IsNullOrWhiteSpace(u)))
             {
-                product.ProductMedia.Add(new ProductMedium
+                // Explicitly mark client-generated IDs as inserts on an already tracked product.
+                _context.ProductMedia.Add(new ProductMedium
                 {
                     Id = Guid.NewGuid(),
                     ProductId = product.Id,
@@ -423,7 +426,9 @@ public class ProductService : IProductService
         {
             if ((product.Domain == "equipment" && string.IsNullOrWhiteSpace(product.Warranty)) ||
                 (product.Domain == "ingredients" && string.IsNullOrWhiteSpace(product.UnitSize)))
-                throw new ValidationException("Xuất bản cần Warranty cho thiết bị hoặc UnitSize cho nguyên liệu.");
+                  throw new ValidationException("Xuất bản cần Warranty cho thiết bị hoặc UnitSize cho nguyên liệu.");
+              if (!await _context.Set<ProductMedium>().AnyAsync(m => m.ProductId == id))
+                  throw new ValidationException("Cần thêm hình ảnh sản phẩm trước khi xuất bản.");
             if (!await _context.Categories.AnyAsync(c => c.Id == product.CategoryId && c.IsActive) ||
                 !await _context.Brands.AnyAsync(b => b.Id == product.BrandId && b.IsActive))
                 throw new ValidationException("Danh mục và thương hiệu phải đang hoạt động.");
@@ -489,6 +494,7 @@ public class ProductService : IProductService
             .Where(p => p.IsPublished && p.ArchivedAt == null && p.Category.IsActive && p.Brand.IsActive)
             .Include(p => p.Category)
             .Include(p => p.Brand)
+            .Include(p => p.ProductUseCases).ThenInclude(x => x.UseCase)
             .Include(p => p.ProductMedia)
             .AsQueryable();
 
@@ -570,6 +576,7 @@ public class ProductService : IProductService
             .Where(p => p.IsPublished && p.ArchivedAt == null && p.Category.IsActive && p.Brand.IsActive)
             .Include(p => p.Category)
             .Include(p => p.Brand)
+            .Include(p => p.ProductUseCases).ThenInclude(x => x.UseCase)
             .Include(p => p.ProductMedia)
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Slug == slug);

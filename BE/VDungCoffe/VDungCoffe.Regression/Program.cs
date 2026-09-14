@@ -5,6 +5,14 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using VDungCoffe.Controllers.User;
+using VDungCoffe.DTO.User.Cart;
 using VDungCoffe.Controllers.Admin;
 using VDungCoffe.Common;
 using VDungCoffe.DTO.Admin.Products;
@@ -174,6 +182,58 @@ await Test("Rich-text JSON decodes escaped attack HTML and preserves structure",
     Assert(section.GetProperty("body").GetString()!.Contains("<p>Safe</p>"), "Safe rich text lost");
     Assert(!section.GetProperty("body").GetString()!.Contains("<script", StringComparison.OrdinalIgnoreCase), "Escaped script bypassed sanitizer");
     Assert(!section.GetProperty("nested")[0].GetString()!.Contains("javascript:", StringComparison.OrdinalIgnoreCase), "Nested dangerous URL retained");
+    return Task.CompletedTask;
+});
+
+await Test("Cache worker stops cleanly while waiting between polls", async () =>
+{
+    using var services = new ServiceCollection().AddHttpClient().BuildServiceProvider();
+    using var worker = new CacheInvalidationWorker(
+        services.GetRequiredService<IServiceScopeFactory>(),
+        services.GetRequiredService<IHttpClientFactory>(),
+        new ConfigurationBuilder().Build(), NullLogger<CacheInvalidationWorker>.Instance);
+    await worker.StartAsync(CancellationToken.None);
+    Assert(worker.ExecuteTask is { IsCompleted: false }, "Worker should be waiting for its next poll");
+    using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+    await worker.StopAsync(deadline.Token);
+    Assert(worker.ExecuteTask is { IsCompletedSuccessfully: true }, "Normal shutdown leaked a canceled or faulted task");
+});
+
+await Test("Anonymous profile requests are challenged before entering AuthService", () =>
+{
+    Assert(typeof(PublicAuthController).GetMethod("GetCurrentProfile")!.GetCustomAttribute<AuthorizeAttribute>() != null,
+        "Profile endpoint may throw for routine anonymous requests and pause the debugger");
+    return Task.CompletedTask;
+});
+
+await Test("Anonymous and tampered carts return empty safely without querying SQL", async () =>
+{
+    using var db = new AuraCoffeeContext(new DbContextOptionsBuilder<AuraCoffeeContext>()
+        .UseSqlServer("Server=localhost;Database=Unused;Integrated Security=true").Options);
+    var controller = new PublicCartController(db, new EphemeralDataProtectionProvider())
+    { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() } };
+    var empty = (OkObjectResult)(await controller.Get(CancellationToken.None)).Result!;
+    Assert(((ApiResponse<CartResponse>)empty.Value!).Data!.Items.Count == 0, "Anonymous cart must be empty");
+    controller.Request.Headers.Cookie = ".Aura.Cart=modified-by-client";
+    var tampered = (OkObjectResult)(await controller.Get(CancellationToken.None)).Result!;
+    Assert(((ApiResponse<CartResponse>)tampered.Value!).Data!.Items.Count == 0, "Tampered cart trusted");
+    Assert(controller.Response.Headers.SetCookie.ToString().Contains(".Aura.Cart="), "Invalid cart cookie not cleared");
+    foreach (var quantity in new[] { -1, 0, 1000 })
+    {
+        var rejected = false;
+        try { await controller.Add(new AddCartItemRequest { ProductId = Guid.NewGuid(), Quantity = quantity }, CancellationToken.None); }
+        catch (VDungCoffe.Common.Exceptions.ValidationException) { rejected = true; }
+        Assert(rejected, "Invalid cart quantity was accepted");
+    }
+});
+
+await Test("Admin customer and payment reads require separate permissions and have no writes", () =>
+{
+    var controller = typeof(AdminReadModelsController);
+    Assert(controller.GetCustomAttribute<AuthorizeAttribute>() != null, "Directory endpoints must require authentication");
+    Assert(controller.GetMethod("Customers")!.GetCustomAttributes<HasPermissionAttribute>().Any(a => a.Policy == Permissions.CustomersView), "Customer read permission missing");
+    Assert(controller.GetMethod("Payments")!.GetCustomAttributes<HasPermissionAttribute>().Any(a => a.Policy == Permissions.PaymentsView), "Payment read permission missing");
+    Assert(!controller.GetMethods().Any(m => m.GetCustomAttribute<HttpPostAttribute>() != null || m.GetCustomAttribute<HttpPutAttribute>() != null || m.GetCustomAttribute<HttpPatchAttribute>() != null || m.GetCustomAttribute<HttpDeleteAttribute>() != null), "Read-only controller exposes a mutation");
     return Task.CompletedTask;
 });
 

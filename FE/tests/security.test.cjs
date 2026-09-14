@@ -3,8 +3,18 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { serializeJsonLd, isSafeImageUrl, csvCell, isSameOriginMutation, contentSecurityPolicy } = require('../src/lib/security.ts');
-const { allowedBackendRoute, sessionCookies, secureSessionCookie } = require('../src/lib/backend-policy.ts');
+const { allowedBackendRoute, allowedBackendQuery, sessionCookies, secureSessionCookie } = require('../src/lib/backend-policy.ts');
 const { apiRequest, ApiError } = require('../src/lib/api-client.ts');
+
+test('API client unwraps BE data for cart and checkout and rejects failed envelopes', async () => {
+  const previous = global.fetch;
+  try {
+    global.fetch = async () => Response.json({ success: true, data: { items: [], totalAmount: 0 } });
+    assert.deepEqual(await apiRequest('/cart'), { items: [], totalAmount: 0 });
+    global.fetch = async () => Response.json({ success: false, data: { items: [] } });
+    await assert.rejects(apiRequest('/cart'), error => error instanceof ApiError && error.status === 502);
+  } finally { global.fetch = previous; }
+});
 
 test('JSON-LD cannot close its script element, while data round-trips intact', () => {
   const payload = { name: '</script><script>globalThis.pwned=1</script>&\u2028\u2029' };
@@ -42,7 +52,13 @@ test('gateway has no open proxy or generic payment/order mutation surface', () =
   for (const route of ['https://evil.test', '../auth/me', 'admin/payments', 'admin/orders/id', 'admin/products/../me', 'admin/products/x/y', 'auth/me?admin=true']) assert.equal(allowedBackendRoute(route, 'POST'), false);
   assert.equal(allowedBackendRoute('admin/payments/id', 'PUT'), false);
   assert.equal(allowedBackendRoute('admin/orders/id', 'DELETE'), false);
-  assert.equal(allowedBackendRoute('admin/orders/id', 'PATCH'), true);
+  assert.equal(allowedBackendRoute('admin/orders/id', 'PATCH'), false);
+  assert.equal(allowedBackendRoute('admin/orders/id/status', 'PATCH'), true);
+  assert.equal(allowedBackendRoute('admin/products/id/price', 'PATCH'), true);
+  assert.equal(allowedBackendRoute('admin/products/id/publish', 'PATCH'), true);
+  assert.equal(allowedBackendRoute('admin/workspace', 'GET'), false);
+  assert.equal(allowedBackendQuery('admin/products', 'GET', new URLSearchParams('page=2&pageSize=100')), true);
+  for (const query of ['page=0', 'pageSize=101', 'url=https://evil.test', 'page=1&page=2']) assert.equal(allowedBackendQuery('admin/products', 'GET', new URLSearchParams(query)), false);
   assert.equal(allowedBackendRoute('auth/logout', 'GET'), false);
   assert.equal(allowedBackendRoute('checkout/quote', 'POST'), true);
 });

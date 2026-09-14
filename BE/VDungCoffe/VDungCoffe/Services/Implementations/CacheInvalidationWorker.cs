@@ -36,6 +36,7 @@ public sealed class CacheInvalidationWorker(IServiceScopeFactory scopes, IHttpCl
                             response.EnsureSuccessStatusCode();
                             entry.CompletedAt = DateTime.UtcNow;
                         }
+                        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { return; }
                         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
                         {
                             logger.LogWarning("Cache revalidation event {EventId} failed ({ExceptionType}); retry queued.", entry.Id, ex.GetType().Name);
@@ -48,7 +49,9 @@ public sealed class CacheInvalidationWorker(IServiceScopeFactory scopes, IHttpCl
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
             catch (Exception ex) { logger.LogError(ex, "Cannot process cache invalidation outbox."); }
-            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+            // Host shutdown cancels the polling delay as part of normal worker cleanup.
+            try { await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken); }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
         }
     }
 }

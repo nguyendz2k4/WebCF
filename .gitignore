@@ -11,3 +11,10 @@
 .idea/
 *.log
 .vs/
+
+# .NET build output
+**/bin/
+**/obj/
+
+# TypeScript incremental cache
+*.tsbuildinfo

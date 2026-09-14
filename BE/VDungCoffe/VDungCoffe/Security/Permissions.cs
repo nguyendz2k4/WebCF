@@ -25,6 +25,7 @@ public static class Permissions
     // Order permissions
     public const string OrdersView = "Permissions.Orders.View";
     public const string OrdersUpdateStatus = "Permissions.Orders.UpdateStatus";
+    public const string PaymentsView = "Permissions.Payments.View";
 
     // Customer permissions
     public const string CustomersView = "Permissions.Customers.View";
@@ -50,7 +51,7 @@ public static class Permissions
         InventoryView, InventoryUpdate,
         CategoriesView, CategoriesManage,
         BrandsView, BrandsManage,
-        OrdersView, OrdersUpdateStatus,
+        OrdersView, OrdersUpdateStatus, PaymentsView,
         CustomersView, CustomersManage,
         ArticlesView, ArticlesCreate, ArticlesEdit, ArticlesPublish, ArticlesDelete,
         ContactsView, ContactsManage,

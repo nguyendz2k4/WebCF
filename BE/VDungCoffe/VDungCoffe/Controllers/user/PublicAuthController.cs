@@ -32,6 +32,7 @@ public class PublicAuthController : ControllerBase
     }
 
     [HttpGet("me")]
+    [Authorize]
     public async Task<ActionResult<ApiResponse<AuthMeResponse>>> GetCurrentProfile()
     {
         var result = await _authService.GetCurrentProfileAsync();

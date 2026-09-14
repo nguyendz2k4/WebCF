@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { backendUrl } from '@/lib/backend-server';
-import { allowedBackendRoute, sessionCookies, secureSessionCookie } from '@/lib/backend-policy';
+import { allowedBackendRoute, allowedBackendQuery, sessionCookies, secureSessionCookie } from '@/lib/backend-policy';
 import { isSameOriginMutation } from '@/lib/security';
 import { parseSession } from '@/lib/contracts';
 
@@ -29,7 +29,7 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
   const { path: parts } = await context.params;
   if (parts.some(part => !/^[a-zA-Z0-9_-]+$/.test(part))) return fail(404);
   const path = parts.join('/');
-  if (!allowedBackendRoute(path, request.method) || request.nextUrl.search) return fail(404);
+  if (!allowedBackendRoute(path, request.method) || !allowedBackendQuery(path, request.method, request.nextUrl.searchParams)) return fail(404);
   const production = process.env.NODE_ENV === 'production';
   let origin: string;
   try {
@@ -63,13 +63,21 @@ async function handle(request: NextRequest, context: { params: Promise<{ path: s
       if (!auth.ok) return fail(503);
       if (!parseSession(JSON.parse(await readLimited(auth.body, 65536))).isAdmin) return fail(403);
     }
-    const response = await fetch(backendUrl(path), { method: request.method, headers, body, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15000) });
+    const target = backendUrl(path);
+    target.search = request.nextUrl.search;
+    const response = await fetch(target, { method: request.method, headers, body, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15000) });
     const responseHeaders = new Headers(privateHeaders);
     for (const cookieHeader of response.headers.getSetCookie()) {
       const safe = secureSessionCookie(cookieHeader, production);
       if (safe) responseHeaders.append('Set-Cookie', safe);
     }
-    if (!response.ok) return Response.json({ error: 'request_failed' }, { status: response.status >= 400 && response.status < 500 ? response.status : 502, headers: responseHeaders });
+    if (!response.ok) {
+      let message: string | undefined;
+      if ([400, 409, 422].includes(response.status)) {
+        try { const value = JSON.parse(await readLimited(response.body, 65536)); if (value.success === false && typeof value.message === 'string' && value.message.length <= 1000) message = value.message; } catch { }
+      }
+      return Response.json({ error: 'request_failed', ...(message ? { message } : {}) }, { status: response.status >= 400 && response.status < 500 ? response.status : 502, headers: responseHeaders });
+    }
     if (response.status === 204) return new Response(null, { status: 204, headers: responseHeaders });
     if (!response.headers.get('content-type')?.includes('application/json')) return fail(502);
     const text = await readLimited(response.body, 5_242_880);

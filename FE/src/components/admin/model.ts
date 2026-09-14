@@ -25,15 +25,17 @@ export const configs: Record<
       { key: "brandId", label: "Thương hiệu", type: "select" },
       { key: "priceType", label: "Kiểu giá", type: "select", options: ["fixed", "from", "contact"] },
       { key: "price", label: "Giá bán (₫)", type: "number" },
-      { key: "stock", label: "Tồn kho", type: "number" },
+      { key: "availability", label: "Nhận đơn", type: "select", options: ["Nhận đặt hàng", "Ngừng nhận đơn"] },
       {
         key: "status",
         label: "Hiển thị",
         type: "select",
-        options: ["Đang bán", "Ẩn"],
+        options: ["Ẩn", "Đang bán"],
       },
       { key: "image", label: "URL hình ảnh", type: "url", optional: true },
       { key: "description", label: "Mô tả", type: "textarea", optional: true },
+      { key: "warranty", label: "Bảo hành (bắt buộc khi xuất bản thiết bị)", optional: true },
+      { key: "unitSize", label: "Quy cách (bắt buộc khi xuất bản nguyên liệu)", optional: true },
     ],
   },
   categories: {
@@ -73,6 +75,7 @@ export const configs: Record<
         type: "select",
         options: [
           "Chờ xác nhận",
+          "Đã xác nhận",
           "Đang chuẩn bị",
           "Đang giao",
           "Hoàn tất",
@@ -125,7 +128,7 @@ export const configs: Record<
         options: ["Bản nháp", "Đã xuất bản"],
       },
       { key: "description", label: "Tóm tắt", type: "textarea" },
-      { key: "content", label: "Nội dung", type: "textarea" },
+      { key: "content", label: "Nội dung JSON (ví dụ: [{\"body\":[\"Đoạn văn\"]}])", type: "textarea" },
       { key: "image", label: "URL ảnh bìa", type: "url", optional: true },
     ],
   },
@@ -174,12 +177,12 @@ export const configs: Record<
   inventory: {
     title: "Tồn kho",
     singular: "tồn kho",
-    description: "Nắm rõ lượng hàng còn lại và chủ động kế hoạch nhập hàng.",
+    description: "Theo dõi trạng thái nhận đơn. Hệ thống chưa quản lý số lượng tồn kho vật lý.",
     fields: [
       { key: "name", label: "Sản phẩm" },
       { key: "sku", label: "SKU" },
       { key: "categoryId", label: "Danh mục" },
-      { key: "stock", label: "Số lượng tồn", type: "number" },
+      { key: "availability", label: "Nhận đơn" },
     ],
   },
 };

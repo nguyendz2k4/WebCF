@@ -2,7 +2,7 @@
 **Project:** Aura Coffee Solutions — Homepage Redesign
 **Document Code:** `HOMEPAGE-COMPOSITION`
 **Version:** 2.0 — Art Direction (Pre-Implementation)
-**Companion Documents:** `AURA-DESIGN-DIRECTION.md` · `AURA-BRAND-DIRECTION.md` · `HOMEPAGE-AUDIT.md`
+**Companion Documents:** `AURA-DESIGN-DIRECTION.md` · `AURA-BRAND-DIRECTION.md`
 **Rule:** One viewport = one primary idea. Editorial and cinematic, not ecommerce dashboard.
 
 ---
@@ -715,4 +715,4 @@ No section is self-contained — each is a breath in a longer sentence.
 *This document is the composition authority for the Aura Coffee homepage.
 Deviations in implementation must be flagged and resolved here before code is written.*
 
-*Companion references: `AURA-DESIGN-DIRECTION.md` (tokens, rules) · `AURA-BRAND-DIRECTION.md` (voice, imagery) · `HOMEPAGE-AUDIT.md` (current state)*
+*Companion references: `AURA-DESIGN-DIRECTION.md` (tokens, rules) · `AURA-BRAND-DIRECTION.md` (voice, imagery)*

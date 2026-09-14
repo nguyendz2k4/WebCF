@@ -2,7 +2,7 @@
 **Brand Expression & Visual Identity Manual for Aura Coffee Solutions**  
 **Document Code:** `AURA-BRAND-DIRECTION`  
 **Version:** 1.0 — Approved Brand Direction  
-**Companion Documents:** `AURA-DESIGN-DIRECTION.md`, `HOMEPAGE-COMPOSITION.md`, `HOMEPAGE-AUDIT.md`  
+**Companion Documents:** `AURA-DESIGN-DIRECTION.md`, `HOMEPAGE-COMPOSITION.md`
 
 ---
 

@@ -32,4 +32,17 @@ public class AdminProductResponse
     public string? Origin { get; set; }
     public string? RoastProfile { get; set; }
     public decimal? CuppingScore { get; set; }
+    public int? GroupsCount { get; set; }
+    public string? Boiler { get; set; }
+    public string? BoilerCapacity { get; set; }
+    public string? Pump { get; set; }
+    public string? Voltage { get; set; }
+    public string? DailyCapacityLabel { get; set; }
+    public string? SubRegion { get; set; }
+    public string? Altitude { get; set; }
+    public string? Process { get; set; }
+    public string? FlavorNotesJson { get; set; }
+    public string? UnitSize { get; set; }
+    public string? CaseSize { get; set; }
+    public string? ShelfLife { get; set; }
 }

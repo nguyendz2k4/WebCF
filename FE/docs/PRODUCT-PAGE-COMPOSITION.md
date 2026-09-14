@@ -3,7 +3,7 @@
 **Document Code:** `PRODUCT-PAGE-COMPOSITION`  
 **Version:** 1.0 — Approved Technical & Editorial Design Specification  
 **Source:** Post `/ui-ux-pro-max` & `/grill-me` alignment session — 26/08/2026  
-**Companion Documents:** `AURA-DESIGN-DIRECTION.md` · `AURA-BRAND-DIRECTION.md` · `PRODUCT-PAGE-DESIGN-BRIEF.md` · `PRODUCT-DATA-AUDIT.md`  
+**Companion Documents:** `AURA-DESIGN-DIRECTION.md` · `AURA-BRAND-DIRECTION.md` · `PRODUCT-PAGE-DESIGN-BRIEF.md`
 **Rule:** One clear hierarchy · High scanability · Restrained visual decoration · Zero card clutter · Zero decorative fluff
 
 ---

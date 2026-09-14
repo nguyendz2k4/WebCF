@@ -31,7 +31,8 @@ import {
   AlertTriangle,
   Eye,
 } from "lucide-react";
-import { configs, Dataset, money, Row, createEmptyData, parseDataset } from "./model";
+import { configs, Dataset, money, Row, createEmptyData } from "./model";
+import { loadAdminData, adminMutation } from './admin-api';
 import { apiRequest, ApiError, errorMessage } from "@/lib/api-client";
 import { parseSession } from "@/lib/contracts";
 import { csvCell, isSafeImageUrl } from "@/lib/security";
@@ -137,6 +138,7 @@ function Modal({
 export default function AdminApp({ section, initialUser }: { section: string; initialUser: User | null }) {
   const router = useRouter();
   const [data, setData] = useState<Dataset>(createEmptyData);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [ready, setReady] = useState(section === "login");
   const [authenticated, setAuthenticated] = useState(!!initialUser);
   const [mobile, setMobile] = useState(false);
@@ -168,8 +170,8 @@ export default function AdminApp({ section, initialUser }: { section: string; in
     const controller = new AbortController();
     setReady(false);
     setLoadError("");
-    apiRequest('/admin/workspace', { signal: controller.signal })
-      .then(value => { if (!controller.signal.aborted) setData(parseDataset(value)); })
+    loadAdminData(section, controller.signal)
+      .then(value => { if (!controller.signal.aborted) { setData(value.data); setPermissions(value.permissions); } })
       .catch(error => {
         if (!controller.signal.aborted) { setData(createEmptyData()); setLoadError(errorMessage(error)); }
       }).finally(() => { if (!controller.signal.aborted) setReady(true); });
@@ -183,9 +185,8 @@ export default function AdminApp({ section, initialUser }: { section: string; in
     mutationLock.current = true;
     setBusy(true);
     try {
-      const path = '/admin/' + resource + (method === 'POST' ? '' : '/' + encodeURIComponent(row.id));
-      const { id, ...values } = row;
-      await apiRequest(path, { method, body: method === 'DELETE' ? { version: values.version } : values, ...(method === 'POST' ? { idempotencyKey: row.id } : {}) });
+      const mutation = adminMutation(resource, method, row);
+      await apiRequest(mutation.path, { method: mutation.method, body: mutation.body, ...(method === 'POST' ? { idempotencyKey: row.id } : {}) });
       setNotice("Đã lưu thay đổi.");
       setRevision(value => value + 1);
       return true;
@@ -401,6 +402,7 @@ export default function AdminApp({ section, initialUser }: { section: string; in
               commit={commit}
               notify={setNotice}
               busy={busy}
+              permissions={permissions}
             />
           )}
           <footer className="adm-footer">
@@ -443,9 +445,7 @@ function Dashboard({ data }: { data: Dataset }) {
     (o) => o.payment === "Đã thanh toán" && o.status !== "Đã hủy",
   );
   const revenue = paid.reduce((s, r) => s + Number(r.total), 0);
-  const low = data.products
-    .filter((p) => Number(p.stock) < 10)
-    .sort((a, b) => Number(a.stock) - Number(b.stock));
+  const low = data.products.filter(p => p.availability === 'Ngừng nhận đơn');
   const count = period === "year" ? 12 : period === "week" ? 7 : end.getDate();
   const buckets = Array.from({ length: count }, (_, i) => {
     const d = new Date(start);
@@ -516,9 +516,9 @@ function Dashboard({ data }: { data: Dataset }) {
             icon: ArrowUpRight,
           },
           {
-            label: "Sản phẩm sắp hết",
+            label: "Sản phẩm ngừng nhận đơn",
             value: low.length,
-            note: "Tồn kho hiện tại dưới 10",
+            note: "Theo trạng thái nhận đơn của sản phẩm",
             icon: Package,
           },
         ].map((s, i) => (
@@ -720,14 +720,13 @@ function Dashboard({ data }: { data: Dataset }) {
                   <strong>{p.name}</strong>
                   <small>{p.sku}</small>
                 </div>
-                <b className={Number(p.stock) === 0 ? "adm-red" : ""}>
-                  {p.stock}
-                  <small>còn lại</small>
+                  <b className="adm-red">
+                    Ngừng nhận đơn
                 </b>
               </div>
             ))}
             {!low.length && (
-              <p>{data.products.length ? "Tất cả sản phẩm đang có lượng tồn ổn định." : "Chưa có dữ liệu sản phẩm để kiểm tra tồn kho."}</p>
+                <p>{data.products.length ? "Tất cả sản phẩm đang nhận đặt hàng." : "Chưa có dữ liệu sản phẩm."}</p>
             )}
           </div>
           <Link className="adm-panel-link" href="/admin/inventory">
@@ -748,11 +747,13 @@ function Manager({
   commit,
   notify,
   busy,
+  permissions,
 }: {
   section: string;
   data: Dataset;
   commit: (resource: string, method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', row: Row) => Promise<boolean>;
   busy: boolean;
+  permissions: string[];
   notify: (s: string) => void;
 }) {
   const inventory = section === "inventory";
@@ -766,8 +767,19 @@ function Manager({
   const [deleting, setDeleting] = useState<Row | null>(null);
   const [view, setView] = useState<Row | null>(null);
   const [error, setError] = useState("");
+  const permissionName: Record<string, string> = { products: 'Products', articles: 'Articles', categories: 'Categories', brands: 'Brands', orders: 'Orders', contacts: 'Contacts' };
+  const can = (action: string) => permissions.includes(`Permissions.${permissionName[section]}.${action}`);
+  const canCreate = ['products', 'articles'].includes(section) ? can('Create') : ['categories', 'brands'].includes(section) && can('Manage');
+  const canEdit = section === 'products' ? can('EditGeneral') : section === 'articles' ? can('Edit') : section === 'orders' ? can('UpdateStatus') : ['categories', 'brands', 'contacts'].includes(section) && can('Manage');
+  const canDelete = ['products', 'articles'].includes(section) ? can('Delete') : ['categories', 'brands'].includes(section) && can('Manage');
+  const existingEditor = !!editor && rows.some(r => r.id === editor.id);
+  const editable = (field: string) => editor?._action === 'price' ? ['price', 'priceType'].includes(field)
+    : section === 'orders' ? ['status', 'description'].includes(field)
+    : section === 'contacts' ? field === 'status'
+    : ['products', 'articles'].includes(section) && field === 'status' ? false
+    : section === 'products' && existingEditor && ['price', 'priceType'].includes(field) ? false : true;
   const filterKey = inventory
-    ? "stock"
+    ? "availability"
     : section === "products"
       ? "categoryId"
       : config.fields.some((f) => f.key === "status")
@@ -784,8 +796,8 @@ function Manager({
       (filter === "all" ||
         (inventory
           ? filter === "out"
-            ? Number(r.stock) === 0
-            : Number(r.stock) > 0 && Number(r.stock) < 10
+            ? r.availability === 'Ngừng nhận đơn'
+            : r.availability === 'Nhận đặt hàng'
           : String(r[filterKey]) === filter)),
   );
   const pages = Math.max(1, Math.ceil(filtered.length / 8));
@@ -794,14 +806,14 @@ function Manager({
     ? config.fields
     : config.fields.map((f) =>
         section === "products" && ["categoryId", "brandId"].includes(f.key)
-          ? { ...f, options: data[f.key === "categoryId" ? "categories" : "brands"].map((row) => row.id) }
+          ? { ...f, options: [...new Set([...data[f.key === "categoryId" ? "categories" : "brands"].map((row) => row.id), ...(editor?.[f.key] ? [String(editor[f.key])] : [])])] }
           : f,
       );
   const visibleColumns: Record<string, string[]> = {
-    products: ["name", "sku", "categoryId", "price", "stock", "status"],
+    products: ["name", "sku", "categoryId", "price", "availability", "status"],
     categories: ["name", "code", "domain", "status"],
     brands: ["name", "code", "status"],
-    inventory: ["name", "sku", "categoryId", "stock"],
+    inventory: ["name", "sku", "categoryId", "availability"],
     orders: ["name", "customer", "total", "date", "status", "payment"],
     customers: ["name", "email", "phone", "status"],
     articles: ["name", "category", "author", "status"],
@@ -815,7 +827,7 @@ function Manager({
     const values = new FormData(e.currentTarget);
     const updated = { ...editor };
     for (const f of fields) {
-      if ((inventory && f.key !== "stock") || (section === "orders" && !["status", "description"].includes(f.key))) continue;
+      if (!editable(f.key)) continue;
       const v = String(values.get(f.key) || "").trim();
       if (!v && !f.optional) {
         setError(`Vui lòng nhập ${f.label.toLowerCase()}.`);
@@ -834,7 +846,12 @@ function Manager({
       if (f.type === 'select' && !f.options?.includes(v)) { setError(f.label + " không hợp lệ."); return; }
       updated[f.key] = f.type === "number" ? Number(v) : v;
     }
-    if (section === 'products' && data.categories.find(row => row.id === updated.categoryId)?.domain !== updated.domain) { setError('Danh mục không thuộc nhóm sản phẩm đã chọn.'); return; }
+    const selectedCategory = data.categories.find(row => row.id === updated.categoryId);
+    if (section === 'products' && selectedCategory && selectedCategory.domain !== updated.domain) { setError('Danh mục không thuộc nhóm sản phẩm đã chọn.'); return; }
+    if (section === 'articles') {
+      try { const value = JSON.parse(String(updated.content)); if (!Array.isArray(value) || !value.every(s => s && Array.isArray(s.body) && s.body.every((p: unknown) => typeof p === 'string'))) throw new Error(); }
+      catch { setError('Nội dung phải là mảng JSON, ví dụ: [{"body":["Đoạn văn"]}].'); return; }
+    }
     const unique =
       section === "products"
         ? "sku"
@@ -854,8 +871,7 @@ function Manager({
       return;
     }
     const exists = rows.some(row => row.id === updated.id);
-    const payload = section === "orders" ? { id: updated.id, status: updated.status, description: updated.description, ...(updated.version ? { version: updated.version } : {}) } : inventory ? { id: updated.id, stock: updated.stock, ...(updated.version ? { version: updated.version } : {}) } : updated;
-    if (await commit(inventory ? 'inventory' : key, inventory || section === 'orders' ? 'PATCH' : exists ? 'PUT' : 'POST', payload)) setEditor(null);
+    if (await commit(key, updated._action === 'price' || ['orders', 'contacts'].includes(section) ? 'PATCH' : exists ? 'PUT' : 'POST', updated)) setEditor(null);
   }
   async function remove() {
     if (!deleting || busy) return;
@@ -891,13 +907,8 @@ function Manager({
         <div className="adm-inventory-summary">
           {[
             ["Tổng sản phẩm", rows.length],
-            ["Tổng đơn vị tồn", rows.reduce((s, r) => s + Number(r.stock), 0)],
-            [
-              "Sắp hết (1–9)",
-              rows.filter((r) => Number(r.stock) > 0 && Number(r.stock) < 10)
-                .length,
-            ],
-            ["Hết hàng", rows.filter((r) => Number(r.stock) === 0).length],
+            ["Nhận đặt hàng", rows.filter(r => r.availability === 'Nhận đặt hàng').length],
+            ["Ngừng nhận đơn", rows.filter(r => r.availability === 'Ngừng nhận đơn').length],
           ].map(([label, value]) => (
             <div className="adm-panel" key={label}>
               <span>{label}</span>
@@ -915,7 +926,7 @@ function Manager({
             </h2>
             <p>
               {inventory
-                ? "Cập nhật số lượng tồn trực tiếp cho từng sản phẩm."
+                ? "Trạng thái nhận đơn được chỉnh sửa tại mục Sản phẩm. Chưa có sổ số lượng tồn kho."
                 : "Xem, tìm kiếm và cập nhật dữ liệu của bạn."}
             </p>
           </div>
@@ -924,7 +935,7 @@ function Manager({
               <Download size={16} />
               Xuất CSV
             </button>
-            {!inventory && !["orders", "payments"].includes(section) && (
+            {canCreate && (
               <button
                 className="adm-primary"
                 onClick={() => {
@@ -938,7 +949,7 @@ function Manager({
                           ? f.options?.[0] || ""
                           : f.type === "number"
                             ? 0
-                            : "",
+                            : f.key === 'content' ? '[{"body":[""]}]' : "",
                       ]),
                     ),
                   });
@@ -979,15 +990,15 @@ function Manager({
             >
               <option value="all">
                 {inventory
-                  ? "Tất cả mức tồn"
+                  ? "Tất cả trạng thái nhận đơn"
                   : filterKey === "categoryId"
                     ? "Tất cả danh mục"
                     : "Tất cả trạng thái"}
               </option>
               {inventory ? (
                 <>
-                  <option value="low">Sắp hết hàng (1–9)</option>
-                  <option value="out">Hết hàng</option>
+                    <option value="low">Nhận đặt hàng</option>
+                    <option value="out">Ngừng nhận đơn</option>
                 </>
               ) : (
                 Array.from(new Set(rows.map((r) => String(r[filterKey])))).map(
@@ -1044,11 +1055,7 @@ function Manager({
                     <td>
                       <Badge
                         value={
-                          Number(r.stock) === 0
-                            ? "Hết hàng"
-                            : Number(r.stock) < 10
-                              ? "Sắp hết hàng"
-                              : "Đủ hàng"
+                          String(r.availability)
                         }
                       />
                     </td>
@@ -1062,9 +1069,9 @@ function Manager({
                       >
                         <Eye size={16} />
                       </button>
-                      {section !== "payments" && <button
+                      {canEdit && <button
                         className="adm-icon"
-                        disabled={busy}
+                        disabled={busy || (['products', 'articles'].includes(section) && ['Đang bán', 'Đã xuất bản'].includes(String(r.status)))}
                         aria-label={`Sửa ${r.name}`}
                         onClick={() => {
                           setError("");
@@ -1073,7 +1080,9 @@ function Manager({
                       >
                         <Pencil size={16} />
                       </button>}
-                      {!inventory && !["orders", "payments"].includes(section) && (
+                      {section === 'products' && can('EditPrice') && <button className="adm-secondary" disabled={busy} onClick={() => { setError(''); setEditor({ ...r, _action: 'price' }); }}>Sửa giá</button>}
+                      {['products', 'articles'].includes(section) && can('Publish') && <button className="adm-secondary" disabled={busy} onClick={() => void commit(key, 'PATCH', { ...r, _action: 'publish', publish: ['Đang bán', 'Đã xuất bản'].includes(String(r.status)) ? 0 : 1 })}>{['Đang bán', 'Đã xuất bản'].includes(String(r.status)) ? 'Chuyển nháp' : 'Xuất bản'}</button>}
+                      {canDelete && (
                         <button
                           className="adm-icon adm-danger"
                           aria-label={`Xóa ${r.name}`}
@@ -1141,6 +1150,7 @@ function Manager({
           close={() => { if (!busy) setEditor(null); }}
         >
           <form onSubmit={save}>
+            {['products', 'articles'].includes(section) && <p>Sản phẩm và bài viết mới được lưu ở bản nháp. Dùng nút Xuất bản trong danh sách sau khi kiểm tra nội dung.</p>}
             <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0 }}>
             <div className="adm-form-grid">
               {fields.map((f) => (
@@ -1154,7 +1164,7 @@ function Manager({
                     <select
                       name={f.key}
                       defaultValue={editor[f.key]}
-                      disabled={section === "orders" && !["status", "description"].includes(f.key)}
+                      disabled={!editable(f.key)}
                       required={!f.optional}
                     >
                       <option value="">Chọn {f.label.toLowerCase()}</option>
@@ -1168,14 +1178,16 @@ function Manager({
                       defaultValue={editor[f.key]}
                       required={!f.optional}
                       rows={f.key === "content" ? 8 : 3}
+                      readOnly={!editable(f.key)}
                     />
                   ) : (
                     <input
                       name={f.key}
-                      type={f.type || "text"}
+                      type={f.type === 'url' ? 'text' : f.type || "text"}
+                      inputMode={f.type === 'url' ? 'url' : undefined}
                       defaultValue={editor[f.key]}
                       required={!f.optional}
-                      readOnly={(inventory && f.key !== "stock") || (section === "orders" && !["status", "description"].includes(f.key))}
+                      readOnly={!editable(f.key)}
                       min={f.type === "number" ? 0 : undefined}
                       step={f.type === "number" ? 1 : undefined}
                     />

@@ -39,7 +39,11 @@ public static class ProductMappings
             WeightLabel = product.WeightLabel,
             Origin = product.Origin,
             RoastProfile = product.RoastProfile,
-            CuppingScore = product.CuppingScore
+            CuppingScore = product.CuppingScore,
+            GroupsCount = product.GroupsCount, Boiler = product.Boiler, BoilerCapacity = product.BoilerCapacity,
+            Pump = product.Pump, Voltage = product.Voltage, DailyCapacityLabel = product.DailyCapacityLabel,
+            SubRegion = product.SubRegion, Altitude = product.Altitude, Process = product.Process,
+            FlavorNotesJson = product.FlavorNotesJson, UnitSize = product.UnitSize, CaseSize = product.CaseSize, ShelfLife = product.ShelfLife
         };
     }
 
@@ -67,6 +71,9 @@ public static class ProductMappings
             Id = product.Id.ToString(),
             Slug = product.Slug,
             Title = product.Name,
+            CreatedAt = product.CreatedAt,
+            SuitableFor = product.ProductUseCases.Where(x => x.UseCase != null && x.UseCase.IsActive)
+                .Select(x => x.UseCase.Code).ToList(),
             Sku = product.Sku,
             Category = product.Category?.Code ?? string.Empty,
             CategoryName = product.Category?.Name ?? string.Empty,
@@ -102,7 +109,9 @@ public static class ProductMappings
                 RoastProfile = product.RoastProfile,
                 CuppingScore = product.CuppingScore,
                 FlavorNotes = flavorNotes,
-                UnitSize = product.UnitSize
+                UnitSize = product.UnitSize,
+                CaseSize = product.CaseSize,
+                ShelfLife = product.ShelfLife
             } : null
         };
     }

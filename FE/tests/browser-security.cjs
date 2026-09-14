@@ -11,7 +11,7 @@ const payload = '</script><script>globalThis.injected=1</script>';
 const product = { id: 'product-1', slug: 'test-product', name: payload, sku: 'TEST', brand: 'Test', shortDescription: 'Contract test', category: 'espresso-machines', domain: 'equipment', price: 1000000, formattedPrice: '1.000.000 ₫', priceType: 'fixed', images: ['/favicon.ico'], inStock: true, createdAt: '2026-01-01', specs: { warranty: '12 tháng' }, suitableFor: ['home'] };
 const cartItem = { id: product.id, title: product.name, category: 'equipment', price: product.price, formattedPrice: product.formattedPrice, image: '/favicon.ico', quantity: 1 };
 const workspace = { products: [], categories: [], brands: [], orders: [], customers: [], articles: [], contacts: [], payments: [] };
-const session = { user: { id: 'user-1', name: 'Test User', email: 'admin@test.invalid', role: 'owner' }, isAdmin: true };
+const session = { user: { id: 'user-1', name: 'Test User', email: 'admin@test.invalid', role: 'owner' }, isAdmin: true, permissions: ['Products.View','Categories.View','Categories.Manage','Brands.View','Orders.View','Articles.View','Contacts.View','Customers.View','Payments.View'].map(p => 'Permissions.' + p) };
 let expired = false, failSave = false, failWorkspace = false, mutations = 0, orderCount = 0;
 const orderKeys = [];
 const logs = [];
@@ -27,14 +27,17 @@ const server = http.createServer(async (req, res) => {
     return json({});
   }
   if (req.url === '/api/auth/logout') { res.setHeader('Set-Cookie', '.AspNetCore.Identity.Application=; Max-Age=0'); return json({}); }
-  if (req.url === '/api/catalog/products') return json([product]);
-  if (req.url === '/api/catalog/articles') return json([]);
+  if (req.url.startsWith('/api/catalog/products')) return json({ success: true, data: { items: [{ ...product, title: product.name, description: product.shortDescription }], page: 1, totalPages: 1 } });
+  if (req.url.startsWith('/api/catalog/articles')) return json({ success: true, data: { items: [], page: 1, totalPages: 0 } });
   if (req.url === '/api/cart') return json({ items: [] });
-  if (req.url === '/api/admin/workspace') return json(workspace, failWorkspace ? 503 : authenticated ? 200 : 401);
+  if (req.method === 'GET' && /^\/api\/admin\/\w+\?/.test(req.url)) {
+    const resource = req.url.split('/')[3].split('?')[0];
+    return json({ items: workspace[resource] || [], page: 1, totalPages: (workspace[resource]?.length ? 1 : 0) }, failWorkspace ? 503 : authenticated ? 200 : 401);
+  }
   if (req.url === '/api/admin/categories' && req.method === 'POST') {
     mutations++;
     if (failSave) return json({ message: '<script>secret</script>' }, 500);
-    workspace.categories.push({ id: 'cat-1', name: body.name, code: body.code, domain: body.domain, displayOrder: body.displayOrder, status: body.status });
+    workspace.categories.push({ id: 'cat-1', name: body.name, code: body.code, domain: body.domain, displayOrder: body.displayOrder, isActive: body.isActive, version: 'version' });
     return json(workspace.categories[0], 201);
   }
   if (req.url === '/api/checkout/quote') {
@@ -76,7 +79,7 @@ async function main() {
     await page.waitForURL('**/admin/login');
     await page.waitForFunction(() => !localStorage.getItem('aura_coffee_user') && !sessionStorage.getItem('aura-admin-demo-session'));
     assert.equal(await page.getByText('Trải nghiệm giao diện demo').count(), 0);
-    assert.equal((await context.request.get(origin + '/api/backend/admin/workspace')).status(), 401);
+    assert.equal((await context.request.get(origin + '/api/backend/admin/products')).status(), 401);
     await page.getByLabel('Email quản trị').fill('admin@test.invalid');
     await page.getByLabel('Mật khẩu').fill('wrong-password');
     await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
